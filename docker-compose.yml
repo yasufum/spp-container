@@ -1,2 +1,4 @@
-golang:
-        image: ubuntu:latest
+spp:
+  image: spp-container
+  volumes:
+    - "~/dpdk-home:/root/dpdk-home"
