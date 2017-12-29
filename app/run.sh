@@ -2,7 +2,7 @@
 
 TARGET=spp
 CMD=$1
-#WORKDIR=/usr/src/dpdk
+WORKDIR=/usr/src/dpdk
 
 if [ ! $1 ]; then
   echo "usage: $0 [command]"
