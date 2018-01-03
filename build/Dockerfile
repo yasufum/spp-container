@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y \
     vim \
     git \
     gcc \
+    python \
+    pciutils \
     make \
     libnuma-dev \
     gcc-multilib \
