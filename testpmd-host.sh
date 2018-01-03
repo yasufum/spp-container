@@ -1,7 +1,7 @@
 #!/bin/sh
 
-sudo rm /tmp/sock1
-sudo rm /tmp/sock2
+sudo rm -rf /tmp/sock1
+sudo rm -rf /tmp/sock2
 
 sudo $RTE_SDK/app/test-pmd/testpmd \
   -c 0x0f -n 4 \
