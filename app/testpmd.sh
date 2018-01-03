@@ -19,4 +19,5 @@ sudo docker run -i -t \
   --vdev=virtio_user1,path=${sock_guest1} \
   --vdev=virtio_user2,path=${sock_guest2} \
   --file-prefix=container \
-  -- -i --txqflags=0xf00 --disable-hw-vlan
+  -- -i \
+  --txqflags=0xf00 --disable-hw-vlan
