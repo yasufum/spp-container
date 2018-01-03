@@ -30,6 +30,9 @@ RUN git clone http://dpdk.org/git/apps/spp
 # Compile jDPDK and SPP
 WORKDIR $WORKDIR/dpdk
 RUN make install T=$RTE_TARGET
+WORKDIR $WORKDIR/dpdk/examples/l2fwd
+RUN make
+
 WORKDIR $WORKDIR/spp
 RUN make
 
