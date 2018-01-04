@@ -1,14 +1,21 @@
 #!/bin/sh
 
-sudo rm /tmp/sock1
-sudo rm /tmp/sock2
+COREMASK=0x0f
+PORTMASK=0x0f
+MEM=1024
+
+SOCK_ID1=1
+SOCK_ID2=2
+
+sudo rm -rf /tmp/sock${SOCK_ID1}
+sudo rm -rf /tmp/sock${SOCK_ID2}
 
 sudo $RTE_SDK/examples/l2fwd/build/app/l2fwd \
-  -c 0x03 -n 4 \
-  --socket-mem 1024 \
+  -c ${COREMASK} -n 4 \
+  --socket-mem ${MEM} \
   --proc-type auto \
   --file-prefix l2fwd-host \
-  --vdev eth_vhost1,iface=/tmp/sock1,queues=2 \
-  --vdev eth_vhost2,iface=/tmp/sock2,queues=2 \
+  --vdev eth_vhost${SOCK_ID1},iface=/tmp/sock${SOCK_ID1},queues=2 \
+  --vdev eth_vhost${SOCK_ID2},iface=/tmp/sock${SOCK_ID2},queues=2 \
   -- \
-  -p 0x03
+  -p ${PORTMASK}
