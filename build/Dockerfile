@@ -19,23 +19,30 @@ RUN apt-get update && apt-get install -y \
     gcc-multilib \
     libarchive-dev \
     linux-headers-$(uname -r) \
+    libpcap-dev \
+    wget \
     tmux \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR $HOMEDIR
 RUN git clone http://dpdk.org/git/dpdk
+RUN git clone http://dpdk.org/git/apps/pktgen-dpdk
 RUN git clone http://dpdk.org/git/apps/spp
 
-# Compile jDPDK and SPP
+# Compile DPDK, pktgen and SPP
 WORKDIR $RTE_SDK
 RUN make install T=$RTE_TARGET
 RUN make examples T=$RTE_TARGET
 
+WORKDIR $HOMEDIR/pktgen-dpdk
+RUN make
+
 WORKDIR $HOMEDIR/spp
 RUN make
 
+
 # Set working directory when container is launched
 WORKDIR $HOMEDIR
-ADD env.sh env.sh
-RUN echo "source ${HOME}/env.sh" >> $HOMEDIR/.bashrc
+ADD env.sh $HOMEDIR/env.sh
+RUN echo "source ${HOMEDIR}/env.sh" >> $HOMEDIR/.bashrc
