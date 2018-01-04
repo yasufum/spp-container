@@ -2,3 +2,6 @@ spp:
   image: spp-container
   volumes:
     - "~/dpdk-home:/root/dpdk-home"
+
+run:
+  image: spp-container

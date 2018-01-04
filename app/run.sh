@@ -1,6 +1,7 @@
 #!/bin/bash
 
-TARGET=spp
+APP_DIR=`dirname ${0}`
+TARGET=run
 CMD=$1
 WORKDIR=/usr/src/dpdk
 
@@ -9,7 +10,8 @@ if [ ! $1 ]; then
   exit
 fi
 
-sudo docker-compose run \
+cd ${APP_DIR}; \
+  sudo docker-compose run \
 	-e http_proxy=${http_proxy} \
 	-e https_proxy=${https_proxy} \
 	-e HTTP_PROXY=${http_proxy} \
