@@ -1,9 +1,9 @@
 FROM ubuntu:latest
 
-ENV WORKDIR "/usr/src/dpdk"
-ENV RTE_SDK "$WORKDIR/dpdk"
+ENV HOMEDIR "/root"
+ENV RTE_SDK "${HOMEDIR}/dpdk"
 ENV RTE_TARGET "x86_64-native-linuxapp-gcc"
-ENV PATH "$PATH:$RTE_SDK/$RTE_TARGET/app"
+ENV PATH "$RTE_SDK/$RTE_TARGET/app:$PATH"
 ENV http_proxy "$http_proxy"
 ENV https_proxy "$https_proxy"
 ENV no_proxy "$no_proxy"
@@ -23,18 +23,19 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR $WORKDIR
+WORKDIR $HOMEDIR
 RUN git clone http://dpdk.org/git/dpdk
 RUN git clone http://dpdk.org/git/apps/spp
 
 # Compile jDPDK and SPP
-WORKDIR $WORKDIR/dpdk
+WORKDIR $RTE_SDK
 RUN make install T=$RTE_TARGET
-WORKDIR $WORKDIR/dpdk/examples/l2fwd
-RUN make
+RUN make examples T=$RTE_TARGET
 
-WORKDIR $WORKDIR/spp
+WORKDIR $HOMEDIR/spp
 RUN make
 
 # Set working directory when container is launched
-WORKDIR $WORKDIR
+WORKDIR $HOMEDIR
+ADD env.sh env.sh
+RUN echo "source ${HOME}/env.sh" >> $HOMEDIR/.bashrc
