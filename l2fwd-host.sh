@@ -4,8 +4,8 @@ COREMASK=0x0f
 PORTMASK=0x0f
 MEM=1024
 
-SOCK_ID1=1
-SOCK_ID2=2
+SOCK_ID1=0
+SOCK_ID2=1
 
 sudo rm -rf /tmp/sock${SOCK_ID1}
 sudo rm -rf /tmp/sock${SOCK_ID2}

@@ -9,8 +9,8 @@ CONTAINER_NAME=spp-container
 
 CMD=${RTE_SDK}/examples/l2fwd/${RTE_TARGET}/l2fwd
 
+DEV_ID1=0
 DEV_ID1=1
-DEV_ID1=2
 CORELIST=4-5
 PORTMASK=0x03
 MEM=1024
@@ -30,8 +30,8 @@ cd ${APP_DIR}; \
   ${CMD} -l ${CORELIST} \
   -n 4 \
   -m ${MEM}\
-  --vdev=virtio_user1,path=${sock_guest1} \
-  --vdev=virtio_user2,path=${sock_guest2} \
+  --vdev=virtio_user${DEV_ID1},path=${sock_guest1} \
+  --vdev=virtio_user${DEV_ID2},path=${sock_guest2} \
   --file-prefix=container \
   -- \
   -p ${PORTMASK}
