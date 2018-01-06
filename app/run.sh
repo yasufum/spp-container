@@ -1,7 +1,7 @@
 #!/bin/bash
 
 APP_DIR=`dirname ${0}`
-TARGET=run
+TARGET=runcmd
 CMD=$1
 
 # Include env.sh
