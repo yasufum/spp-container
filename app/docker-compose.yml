@@ -1,6 +1,3 @@
-runcmd:
-  image: spp-container
-
 pktgen0:
   image: spp-container
   working_dir: /root/pktgen-dpdk
