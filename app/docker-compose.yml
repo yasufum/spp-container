@@ -1,17 +1,5 @@
-spp:
-  image: spp-container
-  volumes:
-    - "~/dpdk-home:/root/dpdk-home"
-
 runcmd:
   image: spp-container
-
-vhost:
-  image: spp-container
-  volumes:
-    - /tmp/sock0:/var/run/usvhost0
-    - /tmp/sock1:/var/run/usvhost1
-    - /dev/hugepages:/dev/hugepages
 
 pktgen0:
   image: spp-container
