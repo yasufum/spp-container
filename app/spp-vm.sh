@@ -19,20 +19,19 @@ APP_DIR=`dirname ${0}`
 sock_host1=/tmp/sock${DEV_ID}
 sock_guest1=/var/run/usvhost${DEV_ID}
 
-CMD=${RTE_SDK}/../spp/src/nfv/${RTE_TARGET}/spp_nfv
-#CMD=bash
+CMD=${RTE_SDK}/../spp/src/vm/${RTE_TARGET}/spp_vm
 
 cd ${APP_DIR}; \
   sudo docker run -i -t \
+  -v ${sock_host1}:${sock_guest1} \
   -v /dev/hugepages:/dev/hugepages \
   -v /var/run/:/var/run/ \
   ${CONTAINER_NAME} \
   ${CMD} \
   -l ${CORELIST} -n 4 -m ${MEM} \
-  --proc-type=secondary \
+  --proc-type=primary \
+  --vdev=virtio_user${DEV_ID},path=${sock_guest1} \
+  --file-prefix=spp-container0 \
   -- \
   -n ${SEC_ID} \
   -s ${CTRL_IP}:${CTRL_PORT}
-#  -p ${CTRL_PORT}:${CTRL_PORT} \
-#  -v ${sock_host1}:${sock_guest1} \
-#  --vdev=virtio_user${DEV_ID},path=${sock_guest1} \
