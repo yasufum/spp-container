@@ -11,10 +11,3 @@ pktgen1:
   volumes:
     - /tmp/sock1:/var/run/usvhost1
     - /dev/hugepages:/dev/hugepages
-
-spp0:
-  image: spp-container
-  working_dir: /root/spp
-  volumes:
-    - /tmp/sock0:/var/run/usvhost0
-    - /dev/hugepages:/dev/hugepages
