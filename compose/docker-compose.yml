@@ -1,13 +1,16 @@
-pktgen0:
+spp-nfv1:
+  image: spp-container
+  working_dir: /root/pktgen-dpdk
+  privileged: true
+  volumes:
+    - /dev/hugepages:/dev/hugepages
+    - /var/run/:/var/run/
+
+spp-vm1:
   image: spp-container
   working_dir: /root/pktgen-dpdk
   volumes:
     - /tmp/sock0:/var/run/usvhost0
-    - /dev/hugepages:/dev/hugepages
-
-pktgen1:
-  image: spp-container
-  working_dir: /root/pktgen-dpdk
-  volumes:
     - /tmp/sock1:/var/run/usvhost1
     - /dev/hugepages:/dev/hugepages
+    - /var/run/:/var/run/
