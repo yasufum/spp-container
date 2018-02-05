@@ -23,6 +23,7 @@ CMD=${RTE_SDK}/../spp/src/nfv/${RTE_TARGET}/spp_nfv
 
 cd ${APP_DIR}; \
   sudo docker run -i -t \
+  --privileged \
   -v ${sock_host}:${sock_guest} \
   -v /dev/hugepages:/dev/hugepages \
   -v /var/run/:/var/run/ \
