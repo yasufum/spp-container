@@ -9,7 +9,7 @@ DEV_ID=$1
 CORELIST=$2
 
 # Include env.sh
-. ${APP_DIR}/../env.sh
+. ${APP_DIR}/../../env.sh
 
 CMD=${RTE_SDK}/../pktgen-dpdk/app/${RTE_TARGET}/pktgen
 

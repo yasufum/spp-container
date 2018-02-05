@@ -5,7 +5,7 @@ APP_DIR=`dirname ${0}`
 CONTAINER_NAME=spp-container
 
 # Include env.sh
-. ${APP_DIR}/../env.sh
+. ${APP_DIR}/../../env.sh
 
 CMD=${RTE_SDK}/examples/l2fwd/${RTE_TARGET}/l2fwd
 
