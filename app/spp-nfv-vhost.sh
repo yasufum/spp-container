@@ -2,13 +2,21 @@
 
 SEC_ID=$1
 CORELIST=$2
-DEV_ID=$4
+DEV_ID=$3
 
 MEM=1024
-CTRL_IP=$3
 CTRL_PORT=6666
 
 CONTAINER_NAME=spp-container
+
+if [ ! -z $4 ];then
+  CTRL_IP=$4
+elif [ ! -z ${SPP_CTRL_IP} ];then
+  CTRL_IP=${SPP_CTRL_IP}
+else
+  echo "Invalid argument"
+  exit
+fi
 
 APP_DIR=`dirname ${0}`
 
