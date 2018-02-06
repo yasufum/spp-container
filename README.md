@@ -5,56 +5,102 @@ Running SPP and DPDK applications on containers.
 
 ## Overview
 
-This is a tools for running SPP and DPDK applications with docker.
-It consists of shell scripts for building images and launching
+SPP container is a set of tools for running SPP and DPDK applications
+with docker.
+It consists of shell or python scripts for building images and launching
 containers with docker commands.
 
-First of all, you need to build an image in which DPDK and other tools
-are installed.
-Just run `build/build.sh` to launch `docker build` with environment
-variables.
+## Getting Started
+
+### Setup for DPDK as in
+
+First of all, you need to setup hugepages for running DPDK application
+as described in DPDK's
+[Gettting Started Guide](https://dpdk.org/doc/guides/linux_gsg/sys_reqs.html).
+You also need to load kernel modules and bind network ports as in
+[Linux Drivers](https://dpdk.org/doc/guides/linux_gsg/linux_drivers.html).
+
+### Build Docker Image
+
+Build a docker image in which DPDK is installed with Dockerfile.
+For building image, just run `build/build.sh` to launch
+`docker build` with environment variables.
 
 ```sh
 $ build/build.sh
 ```
 
-Waiting for minutes and you are ready to launch containers.
+Waiting for a minutes and you are ready to launch containers.
 
-SPP is launched on host as described in SPP
-[setup guide](http://dpdk.org/browse/apps/spp/tree/docs/setup_guide.md).
+### Launch SPP
 
-After SPP is launched, you run `app/spp-nfv.sh` for secondary which has
-ring interface. It takes three arguments, secondary ID, core list and IP
-address of the host.
-It depends on your environment.
-Notice that you cannot use `127.0.0.1' or `localhost` because this IP
-address is used from inside container to access the host.
+In this section, you use four terminals for each of SPP processes.
+First, get SPP and launch SPP controller.
 
 ```sh
-$ app/spp-nfv.sh 2 4-5 192.168.1.1
+# Terminal 1
+$ git clone http://dpdk.org/git/apps/spp
+$ cd spp/src
 ```
 
-You also use vhost interface. For this case, you need to launch a
-secondary on host to create socket.
-If you create `/tmp/sock0` from SPP controller typing
-`sec 1; add vhost 0`, container is launched as following.
-In addition to previous example, it requires fourth argument
-for specifying vhost ID.
+It runs as interactive mode for waiting user input.
+So, you need to open other terminals for SPP primary and secondary
+processes.
+
+Before launch containers, set host IP address as 'SPP_CTRL_IP'
+environment variable for processes inside containers enable to access
+host.
 
 ```sh
-$ app/spp-vm.sh 2 4-5 192.168.1.1 0
+# Set host IP address
+export SPP_CTRL_IP=192.168.1.11
 ```
 
-You can use secondaries running on containers as same as running
-host or VMs.
+For primary process, run 'spp-primary.sh'. It uses core list
+`0-1` which means 1st and 2nd cores as default.
 
+```sh
+# Terminal 2
+$ ./app/spp-primary.sh
+```
+
+For secondary process, there are two launcher scripts.
+`spp-nfv.sh` is used for launching secondary process with ring PMD.
+On the other hand, `spp-vm.sh` is for vhost PMD.
+There are similar to `spp_nfv` running on host and `spp_vm` running on
+guest VM, but different both type of secondary processes are running on
+containers.
+
+Launch `spp_nfv` from `spp-nfv.sh` with options, secondary ID
+and core list.
+In this case, core list is `2-3` for using 3rd and 4th cores.
+
+```sh
+# Terminal 3
+$ app/spp-nfv.sh 1 2-3
+```
+
+Then, launch container with vhost PMD. However, you need to create a
+socket from controller terminal.
+
+```sh
+# Terminal 1
+spp > sec 1;add vhost 1
+```
+
+`sec 1` is a secondary running in `terminal 3`.
+The ID of vhost 1, in this case, is an arbitrary number.
+
+```sh
+# Terminal 4
+$ app/spp-vm.sh 2 4-5 1
+```
 
 ## Install
 
 * docker
 * DPDK 17.11 or later (supporting container)
-* pktgen-dpdk 3.4.6 or later
-  (possible to run previous versions supporting DPDK 17.11)
+* SPP 17.11 or later
 
 ### Optional
 
@@ -67,34 +113,35 @@ docker-compose. Some of scripts use docker-compose instead of
 
 ## How to use
 
-This project supports not only SPP but also testpmd and pktgen-dpdk.
-It consists of shell scripts and configuration files and categorized
+This project supports not only SPP but also other applications
+containers such as testpmd or pktgen-dpdk.
+It consists of python, shell scripts and configuration files,
+and categorized
 in three types of tools considering phases.
-Build tool is for creating container image.
-Second one is for launching applications on host.
-Final one is application launchers running inside containers.
+First one is build tool for creating container image.
+Second one is application launchers running inside containers.
+Final one is experimental tools.
 
 ```sh
 $ tree spp-container/
 spp-container/
 ├── README.md
 ├── app
-│   ├── docker-compose.yml
-│   ├── l2fwd.sh
-│   ├── pktgen-compose.sh
-│   ├── pktgen.sh
-│   ├── run.sh
-│   ├── spp-nfv-vhost.sh
+│   ├── spp-primary.sh
 │   ├── spp-nfv.sh
 │   ├── spp-vm.sh
+│   ├── run.sh
+│   ├── l2fwd.sh
+│   ├── pktgen.sh
 │   └── testpmd.sh
 ├── build
 │   ├── Dockerfile
 │   └── build.sh
 ├── env.sh
-├── l2fwd-host.sh
-├── pktgen-host.sh
-└── testpmd-host.sh
+└── experimental
+    ├── l2fwd-host.sh
+    ├── pktgen-host.sh
+    └── testpmd-host.sh
 ```
 
 ### 1. Build tool
@@ -110,25 +157,7 @@ export RTE_SDK=/root/dpdk
 export RTE_TARGET=x86_64-native-linuxapp-gcc
 ```
 
-### 2. Host application launcher
-
-It is mainly for testing behaviour of DPDK's container support and
-you do not need to use it if you just only use SPP.
-There are three scripts for applications with vhost interface for
-communicating with containers.
-
-  * l2fwd-host.sh
-  * pktgen-host.sh
-  * testpmd-host.sh
-
-It is configured to provide two vhost interfaces and portmask is
-`0x03`(means four ports) in default.
-Physical ports are excluded with `-b` option (blacklist) of DPDK.
-
-Please edit it for chaning configuration to adjust to your environment.
-
-
-### 3. Application container launcher
+### 2. Application container launcher
 
 All of application launchers are placed in `app/`.
 
@@ -138,14 +167,12 @@ inside a container and `pktgen-compose.sh` does it by using
 
 ```sh
 app
-├── docker-compose.yml
-├── l2fwd.sh
-├── pktgen-compose.sh
-├── pktgen.sh
-├── run.sh
-├── spp-nfv-vhost.sh
+├── spp-primary.sh
 ├── spp-nfv.sh
 ├── spp-vm.sh
+├── run.sh
+├── l2fwd.sh
+├── pktgen.sh
 └── testpmd.sh
 ```
 
@@ -172,8 +199,26 @@ work properly. `app/l2fwd.sh` mignt not work for the reason.
 of commands for inspecting status of the container or confirm how to
 work. It is just used for debugging.
 
+### 3. Experimental tools
 
-## How to run docker without sudo
+It is mainly for testing behaviour of DPDK's container support and
+you do not need to use it if you just only use SPP.
+There are three scripts for applications with vhost interface for
+communicating with containers.
+
+  * l2fwd-host.sh
+  * pktgen-host.sh
+  * testpmd-host.sh
+
+It is configured to provide two vhost interfaces and portmask is
+`0x03`(means four ports) in default.
+Physical ports are excluded with `-b` option (blacklist) of DPDK.
+
+Please edit it for chaning configuration to adjust to your environment.
+
+
+
+## (Optional) How to run docker without sudo
 
 Most of scripts provided in this project require to run docker with
 sudo because for running DPDK.
