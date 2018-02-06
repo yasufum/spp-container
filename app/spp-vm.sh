@@ -9,8 +9,8 @@ CTRL_PORT=6666
 
 CONTAINER_NAME=spp-container
 
-if [ ! -z $3 ];then
-  CTRL_IP=$3
+if [ ! -z $4 ];then
+  CTRL_IP=$4
 elif [ ! -z ${SPP_CTRL_IP} ];then
   CTRL_IP=${SPP_CTRL_IP}
 else
@@ -39,7 +39,7 @@ cd ${APP_DIR}; \
   -l ${CORELIST} -n 4 -m ${MEM} \
   --proc-type=primary \
   --vdev=virtio_user${DEV_ID},path=${sock_guest} \
-  --file-prefix=spp-container0 \
+  --file-prefix=spp-container${DEV_ID} \
   -- \
   -n ${SEC_ID} \
   -s ${CTRL_IP}:${CTRL_PORT}
