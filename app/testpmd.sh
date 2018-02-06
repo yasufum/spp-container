@@ -1,10 +1,10 @@
 #!/bin/sh
 
-CORELIST=$2
+CORELIST=$1
 MEM=1024
 
 CONTAINER_NAME=spp-container
-DEV_ID=$1
+DEV_ID=$2
 
 APP_DIR=`dirname ${0}`
 
@@ -20,6 +20,6 @@ cd ${APP_DIR}; \
   testpmd -l ${CORELIST} -n 4 -m ${MEM} \
   --no-pci \
   --vdev=virtio_user${DEV_ID},path=${sock_guest1} \
-  --file-prefix=container${DEV_ID} \
+  --file-prefix=container-testpmd${DEV_ID} \
   -- -i \
   --txqflags=0xf00 --disable-hw-vlan

@@ -5,11 +5,11 @@ MEM=2048
 APP_DIR=`dirname ${0}`
 CONTAINER_NAME=spp-container
 
-DEV_ID=$1
-CORELIST=$2
+CORELIST=$1
+DEV_ID=$2
 
 # Include env.sh
-. ${APP_DIR}/../../env.sh
+. ${APP_DIR}/../env.sh
 
 CMD=${RTE_SDK}/../pktgen-dpdk/app/${RTE_TARGET}/pktgen
 
@@ -28,7 +28,7 @@ cd ${APP_DIR}; \
   -n 4 \
   -m ${MEM}\
   --vdev=virtio_user${DEV_ID},path=${sock_guest} \
-  --file-prefix=container-pktgen0 \
+  --file-prefix=container-pktgen${DEV_ID} \
   --proc-type auto --log-level 7 \
   -- \
   -T -P \
