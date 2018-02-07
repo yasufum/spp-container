@@ -78,12 +78,15 @@ def main():
     elif args.core_list is not None:
         core_opt = {'attr': '-l', 'val': args.core_list}
     else:
-        error_exit('core_mask or core_list')
+        error_exit('--core-mask or --core-list')
 
     if args.socket_mem is not None:
         mem_opt = {'attr': '--socket-mem', 'val': args.socket_mem}
     else:
         mem_opt = {'attr': '-m', 'val': str(args.mem)}
+
+    if args.dev_id is None:
+        error_exit('--dev-id')
 
     if args.foreground is not True:
         docker_run_opt = '-d'

@@ -82,7 +82,7 @@ def main():
     elif args.core_list is not None:
         core_opt = {'attr': '-l', 'val': args.core_list}
     else:
-        error_exit('core_mask or core_list')
+        error_exit('--core-mask or --core-list')
 
     if args.foreground is not True:
         docker_run_opt = '-d'
