@@ -55,6 +55,10 @@ def parse_args():
         type=str,
         default='spp-container',
         help="Name of container image")
+    parser.add_argument(
+        '-fg', '--foreground',
+        action='store_true',
+        help="Run container as foreground mode")
     return parser.parse_args()
 
 
@@ -80,6 +84,11 @@ def main():
     else:
         error_exit('core_mask or core_list')
 
+    if args.foreground is not True:
+        docker_run_opt = '-d'
+    else:
+        docker_run_opt = '-it'
+
     if args.socket_mem is not None:
         mem_opt = {'attr': '--socket-mem', 'val': args.socket_mem}
     else:
@@ -90,7 +99,7 @@ def main():
         error_exit('SPP_CTRL_IP')
 
     docker_cmd = [
-        'sudo', 'docker', 'run', '-it', '\\',
+        'sudo', 'docker', 'run', docker_run_opt, '\\',
         '--privileged', '\\',
         '-v', '/dev/hugepages:/dev/hugepages', '\\',
         '-v', '/var/run/:/var/run/', '\\',
