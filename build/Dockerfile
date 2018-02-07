@@ -33,6 +33,7 @@ RUN git clone http://dpdk.org/git/apps/spp
 # Compile DPDK, pktgen and SPP
 WORKDIR $RTE_SDK
 RUN make install T=$RTE_TARGET
+RUN make app T=$RTE_TARGET
 RUN make examples T=$RTE_TARGET
 
 WORKDIR $HOMEDIR/pktgen-dpdk
