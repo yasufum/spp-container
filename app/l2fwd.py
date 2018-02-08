@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import argparse
+import common
 import conf
 import subprocess
 
@@ -51,65 +52,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def count_ports(port_mask):
-    """Return the number of ports of given portmask"""
-
-    ports_in_binary = format(int(port_mask, 16), 'b')
-    nof_ports = ports_in_binary.count('1')
-    return nof_ports
-
-
-def dev_ids_to_list(dev_ids):
-    """Parse vhost device IDs and return as a list.
-
-    Example:
-    '1,3-5' #=> [1,3,4,5]
-    """
-
-    res = []
-    for dev_id_part in dev_ids.split(','):
-        if '-' in dev_id_part:
-            cl = dev_id_part.split('-')
-            res = res + range(int(cl[0]), int(cl[1])+1)
-        else:
-            res.append(int(dev_id_part))
-    return res
-
-
-def print_pretty_commands(cmds):
-    """Print given command in pretty format"""
-
-    print(' '.join(cmds).replace('\\', '\\\n'))
-
-
-def is_sufficient_dev_ids(dev_ids, port_mask):
-    """Check if ports can be reserved for dev_ids
-
-    Return true if the number of dev IDs equals or more than given ports.
-    'dev_ids' a list of vhost device IDs such as [1,2,3].
-    """
-
-    if not ('0x' in port_mask):  # invalid port mask
-        return False
-
-    ports_in_binary = format(int(port_mask, 16), 'b')
-    if len(dev_ids) >= len(ports_in_binary):
-        return True
-    else:
-        return False
-
-
-def error_exit(objname):
-    """Print error message and exit
-
-    This function is used for notifying an argument for the object
-    is not given.
-    """
-
-    print('Error: \'%s\' is not defined.' % objname)
-    exit()
-
-
 def main():
     args = parse_args()
 
@@ -119,7 +61,7 @@ def main():
     elif args.core_list is not None:
         core_opt = {'attr': '-l', 'val': args.core_list}
     else:
-        error_exit('--core-mask or --core-list')
+        common.error_exit('--core-mask or --core-list')
 
     # Check memory option is defined.
     if args.socket_mem is not None:
@@ -129,10 +71,10 @@ def main():
 
     # Check for other mandatory opitons.
     if args.dev_ids is None:
-        error_exit('--dev-ids')
+        common.error_exit('--dev-ids')
 
     if args.port_mask is None:
-        error_exit('--port-mask')
+        common.error_exit('--port-mask')
 
     # This container is running in backgroud in defualt.
     if args.foreground is not True:
@@ -142,14 +84,14 @@ def main():
 
     # Parse vhost device IDs and Check the number of devices is sufficient
     # for port mask.
-    dev_ids = dev_ids_to_list(args.dev_ids)
-    if is_sufficient_dev_ids(dev_ids, args.port_mask) is not True:
+    dev_ids = common.dev_ids_to_list(args.dev_ids)
+    if common.is_sufficient_dev_ids(dev_ids, args.port_mask) is not True:
         print("Error: Cannot reserve ports '%s (= 0b%s)' on devices '%s'." % (
             args.port_mask, format(int(args.port_mask, 16), 'b'), dev_ids))
         exit()
 
     # Check if the number of ports is even for l2fwd.
-    nof_ports = count_ports(args.port_mask)
+    nof_ports = common.count_ports(args.port_mask)
     if (nof_ports % 2) != 0:
         print("Error: Number of ports must be an even number!")
         exit()
@@ -197,7 +139,7 @@ def main():
     ]
 
     cmds = docker_cmd + l2fwd_cmd
-    print_pretty_commands(cmds)
+    common.print_pretty_commands(cmds)
 
     # Remove delimiters for print_pretty_commands().
     while '\\' in cmds:
