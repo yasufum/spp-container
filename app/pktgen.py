@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import argparse
+import common
 import conf
 import subprocess
 
@@ -52,25 +53,13 @@ def parse_args():
     return parser.parse_args()
 
 
-def print_pretty_commands(cmds):
-    print(' '.join(cmds).replace('\\', '\\\n'))
-
-
-def error_exit(objname):
-    print("Error: '%s' is not defined." % objname)
-    exit()
-
-
-def uniq(dup_list):
-    return list(set(dup_list))
-
-
 def cores_to_range(core_opt):
-    """
-    Expand cores to ranged list.
+    """Expand cores to ranged list.
+
     For exp, '1-3,5' is converted to [1,2,3,5],
     or '0x17' is to [1,2,3,5].
     """
+
     res = []
     if core_opt['attr'] == '-c':
         bin_list = list(
@@ -91,7 +80,7 @@ def cores_to_range(core_opt):
                 res.append(int(core_part))
     else:
         pass
-    res = uniq(res)
+    res = common.uniq(res)
     res.sort()
     return res
 
@@ -104,7 +93,7 @@ def main():
     elif args.core_list is not None:
         core_opt = {'attr': '-l', 'val': args.core_list}
     else:
-        error_exit('core_mask or core_list')
+        common.error_exit('core_mask or core_list')
 
     if args.socket_mem is not None:
         mem_opt = {'attr': '--socket-mem', 'val': args.socket_mem}
@@ -112,7 +101,7 @@ def main():
         mem_opt = {'attr': '-m', 'val': str(args.mem)}
 
     if args.dev_id is None:
-        error_exit('--dev-id')
+        common.error_exit('--dev-id')
 
     sock_host = '/tmp/sock%d' % args.dev_id
     sock_guest = '/var/run/usvhost%d' % args.dev_id
@@ -161,7 +150,7 @@ def main():
     ]
 
     cmds = docker_cmd + pktgen_cmd
-    print_pretty_commands(cmds)
+    common.print_pretty_commands(cmds)
 
     while '\\' in cmds:
         cmds.remove('\\')
