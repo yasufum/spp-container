@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import argparse
+import common
 import conf
 import os
 import subprocess
@@ -62,27 +63,18 @@ def parse_args():
     return parser.parse_args()
 
 
-def print_pretty_commands(cmds):
-    print(' '.join(cmds).replace('\\', '\\\n'))
-
-
-def error_exit(objname):
-    print('Error: \'%s\' is not defined.' % objname)
-    exit()
-
-
 def main():
     args = parse_args()
 
     if args.port_mask is None:
-        error_exit('port_mask')
+        common.error_exit('port_mask')
 
     if args.core_mask is not None:
         core_opt = {'attr': '-c', 'val': args.core_mask}
     elif args.core_list is not None:
         core_opt = {'attr': '-l', 'val': args.core_list}
     else:
-        error_exit('--core-mask or --core-list')
+        common.error_exit('--core-mask or --core-list')
 
     if args.foreground is not True:
         docker_run_opt = '-d'
@@ -96,7 +88,7 @@ def main():
 
     ctrl_ip = os.getenv('SPP_CTRL_IP', args.ctrl_ip)
     if ctrl_ip is None:
-        error_exit('SPP_CTRL_IP')
+        common.error_exit('SPP_CTRL_IP')
 
     docker_cmd = [
         'sudo', 'docker', 'run', docker_run_opt, '\\',
@@ -123,7 +115,7 @@ def main():
     ]
 
     cmds = docker_cmd + spp_cmd
-    print_pretty_commands(cmds)
+    common.print_pretty_commands(cmds)
 
     while '\\' in cmds:
         cmds.remove('\\')
