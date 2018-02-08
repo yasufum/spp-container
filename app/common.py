@@ -55,3 +55,12 @@ def error_exit(objname):
 
     print('Error: \'%s\' is not defined.' % objname)
     exit()
+
+
+def uniq(dup_list):
+    """Remove duplicated elements in a list and return a unique list
+
+    Example: [1,1,2,2,3,3] #=> [1,2,3]
+    """
+
+    return list(set(dup_list))
