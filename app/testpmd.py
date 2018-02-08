@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import argparse
+import common
 import conf
 import subprocess
 
@@ -43,15 +44,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def print_pretty_commands(cmds):
-    print(' '.join(cmds).replace('\\', '\\\n'))
-
-
-def error_exit(objname):
-    print('Error: \'%s\' is not defined.' % objname)
-    exit()
-
-
 def main():
     args = parse_args()
 
@@ -60,7 +52,7 @@ def main():
     elif args.core_list is not None:
         core_opt = {'attr': '-l', 'val': args.core_list}
     else:
-        error_exit('--core-mask or --core-list')
+        common.error_exit('--core-mask or --core-list')
 
     if args.socket_mem is not None:
         mem_opt = {'attr': '--socket-mem', 'val': args.socket_mem}
@@ -68,7 +60,7 @@ def main():
         mem_opt = {'attr': '-m', 'val': str(args.mem)}
 
     if args.dev_id is None:
-        error_exit('--dev-id')
+        common.error_exit('--dev-id')
 
     sock_host = '/tmp/sock%d' % args.dev_id
     sock_guest = '/var/run/usvhost%d' % args.dev_id
@@ -98,7 +90,7 @@ def main():
     ]
 
     cmds = docker_cmd + testpmd_cmd
-    print_pretty_commands(cmds)
+    common.print_pretty_commands(cmds)
 
     while '\\' in cmds:
         cmds.remove('\\')
