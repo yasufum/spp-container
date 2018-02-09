@@ -1,12 +1,23 @@
 FROM ubuntu:latest
 
-ENV HOMEDIR "/root"
-ENV RTE_SDK "${HOMEDIR}/dpdk"
-ENV RTE_TARGET "x86_64-native-linuxapp-gcc"
-ENV PATH "$RTE_SDK/$RTE_TARGET/app:$PATH"
-ENV http_proxy "$http_proxy"
-ENV https_proxy "$https_proxy"
-ENV no_proxy "$no_proxy"
+
+ARG rte_sdk
+ARG rte_target
+
+ARG home_dir
+ARG dpdk_repo
+ARG dpdk_branch
+ARG pktgen_repo
+ARG pktgen_branch
+ARG spp_repo
+ARG spp_branch
+
+ENV PATH ${rte_sdk}/${rte_target}/app:${PATH}
+ENV http_proxy ${http_proxy}
+ENV https_proxy $https_proxy
+ENV no_proxy ${no_proxy}
+ENV RTE_SDK ${rte_sdk}
+ENV RTE_TARGET ${rte_target}
 
 RUN apt-get update && apt-get install -y \
     vim \
@@ -25,25 +36,24 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR $HOMEDIR
-RUN git clone http://dpdk.org/git/dpdk
-RUN git clone http://dpdk.org/git/apps/pktgen-dpdk
-RUN git clone http://dpdk.org/git/apps/spp
+WORKDIR $home_dir
+RUN git clone $dpdk_branch $dpdk_repo
+RUN git clone $pktgen_branch $pktgen_repo
+RUN git clone $spp_branch $spp_repo
 
 # Compile DPDK, pktgen and SPP
-WORKDIR $RTE_SDK
-RUN make install T=$RTE_TARGET
-RUN make app T=$RTE_TARGET
-RUN make examples T=$RTE_TARGET
+WORKDIR $rte_sdk
+RUN make install T=$rte_target
+RUN make app T=$rte_target
+RUN make examples T=$rte_target
 
-WORKDIR $HOMEDIR/pktgen-dpdk
+WORKDIR ${home_dir}/pktgen-dpdk
 RUN make
 
-WORKDIR $HOMEDIR/spp
+WORKDIR ${home_dir}/spp
 RUN make
-
 
 # Set working directory when container is launched
-WORKDIR $HOMEDIR
-ADD env.sh $HOMEDIR/env.sh
-RUN echo "source ${HOMEDIR}/env.sh" >> $HOMEDIR/.bashrc
+WORKDIR ${home_dir}
+ADD env.sh ${home_dir}/env.sh
+RUN echo "source ${home_dir}/env.sh" >> ${home_dir}/.bashrc

@@ -5,7 +5,7 @@ APP_DIR=`dirname ${0}`
 CONTAINER_NAME=spp-container
 
 # Include env.sh
-. ${APP_DIR}/../env.sh
+. ${APP_DIR}/env.sh
 
 if [ ! $1 ]; then
   echo "usage: $0 [command]"
