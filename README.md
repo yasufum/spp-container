@@ -12,7 +12,7 @@ containers with docker commands.
 
 ## Getting Started
 
-### Setup for DPDK as in
+### Setup for DPDK
 
 First of all, you need to setup hugepages for running DPDK application
 as described in DPDK's
@@ -22,8 +22,8 @@ You also need to load kernel modules and bind network ports as in
 
 ### Build Docker Image
 
-Build a docker image in which DPDK is installed with Dockerfile.
-For building image, just run `build/build.sh` to launch
+Build a docker image in which DPDK and SPP are installed with
+Dockerfile. For building image, just run `build/build.sh` to launch
 `docker build` with environment variables.
 
 ```sh
@@ -50,50 +50,59 @@ processes.
 Before launch containers, set host IP address as 'SPP_CTRL_IP'
 environment variable for processes inside containers enable to access
 host.
+It is better to this variable in `$HOME/.bashrc`.
 
 ```sh
 # Set host IP address
 export SPP_CTRL_IP=192.168.1.11
 ```
 
-For primary process, run 'spp-primary.sh'. It uses core list
-`0-1` which means 1st and 2nd cores as default.
+For primary process on a container, run 'spp-primary.py' with options
+EAL and SPP primary.
 
 ```sh
 # Terminal 2
-$ ./app/spp-primary.sh
+$ ./app/spp-primary.py -l 0-1 -p 0x03
 ```
 
 For secondary process, there are two launcher scripts.
-`spp-nfv.sh` is used for launching secondary process with ring PMD.
-On the other hand, `spp-vm.sh` is for vhost PMD.
+`spp-nfv.py` is used for launching secondary process with ring PMD.
+On the other hand, `spp-vm.py` is for vhost PMD.
 There are similar to `spp_nfv` running on host and `spp_vm` running on
-guest VM, but different both type of secondary processes are running on
-containers.
+guest VM, but different both type of secondary processes are running
+also on containers as primary.
 
-Launch `spp_nfv` from `spp-nfv.sh` with options, secondary ID
-and core list.
-In this case, core list is `2-3` for using 3rd and 4th cores.
+Launch `spp_nfv` from `spp-nfv.py` with options.
+In this case, secondary ID is `1` and core list is `2-3` for using
+3rd and 4th cores.
 
 ```sh
 # Terminal 3
-$ app/spp-nfv.sh 1 2-3
+$ app/spp-nfv.py -i 1 -l 2-3
 ```
 
-Then, launch container with vhost PMD. However, you need to create a
-socket from controller terminal.
+Then, launch container with vhost PMD. However, you have to create a
+socket from controller's terminal before.
 
 ```sh
 # Terminal 1
 spp > sec 1;add vhost 1
 ```
 
-`sec 1` is a secondary running in `terminal 3`.
-The ID of vhost 1, in this case, is an arbitrary number.
+`sec 1` is the secondary process running on `terminal 3`.
+Vhost ID is an arbitrary number, defined as `1` in this case.
+
+Secondary process of vhost interface container is launched from
+`spp-vm.py`. The name `vm` is originaly from `spp_vm` but process
+runs on a container actually.
+
+Options are almost same as `spp-nfv.py`, but additional option
+for specifying vhost device ID is required with `-d`.
+Value of `-d` must be the same as vhost ID.
 
 ```sh
 # Terminal 4
-$ app/spp-vm.sh 2 4-5 1
+$ app/spp-vm.py -i 2 -l 4-5 -d 1
 ```
 
 ## Install
@@ -108,6 +117,8 @@ It is under consideration to launch serveral containers with
 docker-compose. Some of scripts use docker-compose instead of
 `docker run`.
 
+[TODO] Add implementation and explanation for docker-compose.
+
 * docker-compose
 
 
@@ -115,70 +126,96 @@ docker-compose. Some of scripts use docker-compose instead of
 
 This project supports not only SPP but also other applications
 containers such as testpmd or pktgen-dpdk.
-It consists of python, shell scripts and configuration files,
-and categorized
-in three types of tools considering phases.
-First one is build tool for creating container image.
-Second one is application launchers running inside containers.
-Final one is experimental tools.
+It consists of python, shell scripts and configuration files.
+Files are categorized in three types of tools considering phases,
+build tool for creating container image,
+application launchers running inside containers and
+experimental tools.
 
 ```sh
 $ tree spp-container/
 spp-container/
 ├── README.md
 ├── app
-│   ├── spp-primary.sh
-│   ├── spp-nfv.sh
-│   ├── spp-vm.sh
-│   ├── run.sh
-│   ├── l2fwd.sh
-│   ├── pktgen.sh
-│   └── testpmd.sh
+│   ├── spp-primary.py
+│   ├── spp-nfv.py
+│   ├── spp-vm.py
+│   ├── l2fwd.py
+│   ├── pktgen.py
+│   └── testpmd.py
 ├── build
 │   ├── Dockerfile
+│   ├── run.sh
 │   └── build.sh
 ├── env.sh
 └── experimental
-    ├── l2fwd-host.sh
-    ├── pktgen-host.sh
-    └── testpmd-host.sh
+    └── host
+        ├── l2fwd-host.sh
+        ├── pktgen-host.sh
+        └── testpmd-host.sh
 ```
 
 ### 1. Build tool
 
-As explained in `Overview` section, build is done by simply typing
-`build/build.sh`. It defines a name of image and runs `docker build`
-with this name and some environments for applying inside container.
-Environmental variables for container is defined in `env.sh`.
+As explained in `Overview` section, build process is done by simply
+typing `build/build.py`.
+This script is for running `docker build` with a set of `--build-args`
+options for applying inside container.
+
+Refer all of options running with `-h` option.
 
 ```sh
-# env.sh
-export RTE_SDK=/root/dpdk
-export RTE_TARGET=x86_64-native-linuxapp-gcc
+$ ./build/build.py -h
+usage: build.py [-h] [-n CONTAINER_NAME] [--dpdk-repo DPDK_REPO]
+                [--dpdk-branch DPDK_BRANCH] [--pktgen-repo PKTGEN_REPO]
+                [--pktgen-branch PKTGEN_BRANCH] [--spp-repo SPP_REPO]
+                [--spp-branch SPP_BRANCH]
+
+Docker image builder for SPP
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -n CONTAINER_NAME, --container-name CONTAINER_NAME
+                        Container name
+  --dpdk-repo DPDK_REPO
+                        Git url of DPDK
+  --dpdk-branch DPDK_BRANCH
+                        Specific branch for cloning DPDK
+  --pktgen-repo PKTGEN_REPO
+                        Git url of pktgen-dpdk
+  --pktgen-branch PKTGEN_BRANCH
+                        Specific branch for cloning pktgen-dpdk
+  --spp-repo SPP_REPO   Git url of SPP
+  --spp-branch SPP_BRANCH
+                        Specific branch for cloning SPP
 ```
+
+For testing purpose, `build/run.sh` launches a container without vhost
+interface and run any of commands for inspecting status
+of the container or confirm how to
+work. `run.sh` uses `env.sh` created from `build.sh` to include
+environment variables, so do not remove it..
 
 ### 2. Application container launcher
 
 All of application launchers are placed in `app/`.
 
-As described by name, for instance, `pktgen.sh` launches pktgen-dpdk
-inside a container and `pktgen-compose.sh` does it by using
-`docker-compose`.
+As described by name, for instance, `pktgen.py` launches pktgen-dpdk
+inside a container.
 
 ```sh
 app
-├── spp-primary.sh
-├── spp-nfv.sh
-├── spp-vm.sh
-├── run.sh
-├── l2fwd.sh
-├── pktgen.sh
-└── testpmd.sh
+├── spp-primary.py
+├── spp-nfv.py
+├── spp-vm.py
+├── l2fwd.py
+├── pktgen.py
+└── testpmd.py
 ```
 
-If you use SPP, launch SPP before and run `spp-nfv.sh` for ring
-interface or `spp-vm.sh` for vhost interface.
-You cannot use `spp-nfv-vhost.sh` because it is expected to use
+For using SPP, launch SPP before and run `spp-nfv.py` for ring
+interface or `spp-vm.py` for vhost interface.
+You cannot use `spp-nfv-vhost.py` because it is expected to use
 vdev but DPDK does not support vdev to be shared with secondary
 processes currently.
 It should be supported in a future release of DPDK.
@@ -193,11 +230,7 @@ testpmd on an container.
 There is a restriction for using virtio_user with `--vdev` option.
 DPDK might not support to use two or more virtio_user interfaces.
 So, you are succeeded to launch application but forwarding does not
-work properly. `app/l2fwd.sh` mignt not work for the reason.
-
-`app/run.sh` launches a container without vhost interface and run any
-of commands for inspecting status of the container or confirm how to
-work. It is just used for debugging.
+work properly. `app/l2fwd.py` mignt not work for the reason.
 
 ### 3. Experimental tools
 
@@ -218,13 +251,24 @@ Please edit it for chaning configuration to adjust to your environment.
 
 
 
-## (Optional) How to run docker without sudo
+## How to run docker without sudo
 
-Most of scripts provided in this project require to run docker with
-sudo because for running DPDK.
+You are required to sudo for running docker in most of scripts provided
+in this project.
+It is because for running DPDK applications.
+
 However, you can run docker without sudo if you do not use DPDK.
+It is useful if you run `docker rm` or `docker rmi` commands.
 
-In general, you need to run docker with sudo because docker daemon
+```sh
+# Remove all of containers
+$ docker rm `docker ps -aq`
+
+# Remove all of images
+$ docker rmi `docker images -aq`
+```
+
+The reason for running docker requires sudo is docker daemon
 binds to a unix socket instead of a TCP port.
 Unix socket is owned by root and other users can only access it using
 sudo.
@@ -235,4 +279,4 @@ $ sudo groupadd docker
 $ sudo usermod -aG docker $USER
 ```
 
-To activate it, logout and re-login at once.
+To activate it, you have to logout and re-login at once.
