@@ -10,6 +10,7 @@ with docker.
 It consists of shell or python scripts for building images and launching
 containers with docker commands.
 
+
 ## Getting Started
 
 ### Setup for DPDK
@@ -20,11 +21,12 @@ as described in DPDK's
 You also need to load kernel modules and bind network ports as in
 [Linux Drivers](https://dpdk.org/doc/guides/linux_gsg/linux_drivers.html).
 
+
 ### Build Docker Image
 
 Build a docker image in which DPDK and SPP are installed instructed as a
 Dockerfile.
-For building image, just run `build/build.sh` using latest official releases.
+For building image, just run `build/build.sh` using latest releases.
 This shell script launchs `docker build`.
 Waiting for a minutes and you are ready to launch containers.
 
@@ -33,33 +35,8 @@ $ build/build.sh
 ```
 
 If you want to use specific branch of the release or repository, run `build.sh`
-with options. Please refer help for details.
+with options. Please refer help `build/build.py -h` for details.
 
-```sh
-$ ./build/build.py -h
-usage: build.py [-h] [-n CONTAINER_NAME] [--dpdk-repo DPDK_REPO]
-                [--dpdk-branch DPDK_BRANCH] [--pktgen-repo PKTGEN_REPO]
-                [--pktgen-branch PKTGEN_BRANCH] [--spp-repo SPP_REPO]
-                [--spp-branch SPP_BRANCH]
-
-Docker image builder for SPP
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -n CONTAINER_NAME, --container-name CONTAINER_NAME
-                        Container name
-  --dpdk-repo DPDK_REPO
-                        Git url of DPDK
-  --dpdk-branch DPDK_BRANCH
-                        Specific branch for cloning DPDK
-  --pktgen-repo PKTGEN_REPO
-                        Git url of pktgen-dpdk
-  --pktgen-branch PKTGEN_BRANCH
-                        Specific branch for cloning pktgen-dpdk
-  --spp-repo SPP_REPO   Git url of SPP
-  --spp-branch SPP_BRANCH
-                        Specific branch for cloning SPP
-```
 
 ### Launch SPP
 
@@ -184,6 +161,7 @@ spp-container/
         └── testpmd-host.sh
 ```
 
+
 ### 1. Build tool
 
 As explained in `Overview` section, build process is done by simply
@@ -227,20 +205,18 @@ you can build an image of DPDK 17.11 and developping repository.
 ./build/build.py --dpdk-branch v17.11 --spp-repo https://github.com/your/spp.git
 ```
 
-Container is useful for setting up NFVs, but messy to confir details inside the
-container in some cases.
-For these cases, `build/run.sh` is useful.
-It launches a container without DPDK interface and run any of commands for
-inspecting status of the container or confirm how to work.
-`run.sh` uses `env.sh` created from `build.sh` to include
-environment variables, so do not remove it..
+Container is useful for setting up NFVs, but just bit messy to lookup inside the
+container because it is cleaned up immediately after process is finished.
+To inspect inside the container, `build/run.sh` is useful.
+It launches the container and run any of command without DPDK interfaces
+for just inspecting the container.
+`build/run.sh` uses `env.sh` created from `build/build.sh` to include
+environment variables, so do not remove it.
+
 
 ### 2. Application container launcher
 
-All of application launchers are placed in `app/`.
-
-As described by name, for instance, `pktgen.py` launches pktgen-dpdk
-inside a container.
+Application container launchers are placed in `app/`.
 
 ```sh
 app
@@ -252,24 +228,194 @@ app
 └── testpmd.py
 ```
 
-For using SPP, launch SPP before and run `spp-nfv.py` for ring
-interface or `spp-vm.py` for vhost interface.
-You cannot use `spp-nfv-vhost.py` because it is expected to use
-vdev but DPDK does not support vdev to be shared with secondary
-processes currently.
-It should be supported in a future release of DPDK.
+As described by name, for instance, `pktgen.py` launches pktgen-dpdk
+inside a container.
 
-You also use application launchers without SPP for testing.
-In this case, you need to launch application on host before running
-application launchers as described in previous section.
-You can run any combination of applications other than SPP.
-For instance, it is possible to run pktgen-dpdk on host and
-testpmd on an container.
+For launching application containers with SPP, launch SPP controller and
+then primary and secondary processes before.
+However, you have to define 'SPP_CTRL_IP' environment variable
+to indicate IP address of controller for SPP processes on containers before.
 
-There is a restriction for using virtio_user with `--vdev` option.
-DPDK might not support to use two or more virtio_user interfaces.
-So, you are succeeded to launch application but forwarding does not
-work properly. `app/l2fwd.py` mignt not work for the reason.
+You need to open several terminals for running each of processes.
+
+
+#### SPP Controller
+
+SPP controller is a CLI tool for accepting user's commands.
+You do not need a container specific controller.
+Simply use `spp.py` provided in SPP project.
+
+```sh
+$ cd /path/to/spp
+$ python spp.py
+```
+
+
+#### SPP Primary Container
+
+SPP primary is launched from `app/spp-primary.py`. It runs on a container
+and manages resources on host from inside the container.
+Resources on host is able to be managed from application container
+because `app/spp-primary.py` calls `docker run` with
+`-v` option to mount hugepages or other devices and share them between
+host and containers.
+
+There are two usecases for running SPP primary.
+Showing statistics of traffic information or not.
+
+If you launch SPP primary with statistics, you need to run it with
+two cores and in foreground mode.
+This is an example for launching primary with core list 0-1 and two ports
+in foreground mode.
+
+```sh
+$ ./app/spp-primary -l 0-1 -p 0x03 -fg
+```
+
+It is another example with one core and two ports in background mode.
+
+```sh
+$ ./app/spp-primary -l 0 -p 0x03
+```
+
+You can use other options than explained. Please refer help.
+
+```sh
+$ ./app/spp-primary.py -h
+usage: spp-primary.py [-h] [-n NOF_RING] [-p PORT_MASK] [-l CORE_LIST]
+                      [-c CORE_MASK] [-m MEM] [--socket-mem SOCKET_MEM]
+                      [-ip CTRL_IP] [--ctrl-port CTRL_PORT]
+                      [--nof-memchan NOF_MEMCHAN]
+                      [--container-name CONTAINER_NAME] [-fg]
+
+Launcher for spp-nfv applicatino container
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -n NOF_RING, --nof-ring NOF_RING
+                        Maximum number of Ring PMD
+  -p PORT_MASK, --port-mask PORT_MASK
+                        Port mask
+  -l CORE_LIST, --core-list CORE_LIST
+                        Core list
+  -c CORE_MASK, --core-mask CORE_MASK
+                        Core mask
+  -m MEM, --mem MEM     Memory size for spp_nfv
+  --socket-mem SOCKET_MEM
+                        Memory size for spp_nfv
+  -ip CTRL_IP, --ctrl-ip CTRL_IP
+                        IP address of SPP controller
+  --ctrl-port CTRL_PORT
+                        Port of SPP controller
+  --nof-memchan NOF_MEMCHAN
+                        Port of SPP controller
+  --container-name CONTAINER_NAME
+                        Name of container image
+  -fg, --foreground     Run container as foreground mode
+```
+
+
+#### SPP Secondary Container
+
+In SPP, there are two types of secondary process, `spp_nfv`
+for forwarding packets on host,
+or `spp_vm` for forwarding inside a VM.
+`spp-nfv.py` is for launching application container for `spp_nfv`
+with ring interfaces
+or `spp-vm.py` for vhost interface.
+
+`spp-nfv.py` requires a secondary ID and core option, core mask or
+core list.
+
+```sh
+$ app/spp-nfv.py -i 1 -l 2-3
+```
+
+You can specify other options as DPDK applications.
+
+```sh
+$ ./app/spp-nfv.py -h
+usage: spp-nfv.py [-h] [-i SEC_ID] [-l CORE_LIST] [-c CORE_MASK] [-m MEM]
+                  [--socket-mem SOCKET_MEM] [-ip CTRL_IP]
+                  [--ctrl-port CTRL_PORT] [--nof-memchan NOF_MEMCHAN]
+                  [--container-name CONTAINER_NAME] [-fg]
+
+Launcher for spp-nfv applicatino container
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i SEC_ID, --sec-id SEC_ID
+                        Secondary ID
+  -l CORE_LIST, --core-list CORE_LIST
+                        Core list
+  -c CORE_MASK, --core-mask CORE_MASK
+                        Core mask
+  -m MEM, --mem MEM     Memory size for spp_nfv
+  --socket-mem SOCKET_MEM
+                        Memory size for spp_nfv
+  -ip CTRL_IP, --ctrl-ip CTRL_IP
+                        IP address of SPP controller
+  --ctrl-port CTRL_PORT
+                        Port of SPP controller
+  --nof-memchan NOF_MEMCHAN
+                        Port of SPP controller
+  --container-name CONTAINER_NAME
+                        Name of container image
+  -fg, --foreground     Run container as foreground mode
+```
+
+For launching `spp_vm` for vhost interface, it is required to assign
+a vhost device ID from `app/spp-nfv.py` and launch `app/spp-vm.py`
+with same ID..
+
+```sh
+# Add vhost 1 from spp-nfv.py of sec 1
+spp > sec 1;add vhost 1
+```
+
+Launch a secondary container with device ID 1.
+
+```sh
+$ app/spp-vm.py -i 2 -l 4-5 -d 1
+```
+
+You can specify other options as DPDK applications.
+
+```sh
+$ ./app/spp-vm.py -h
+usage: spp-vm.py [-h] [-i SEC_ID] [-l CORE_LIST] [-c CORE_MASK] [-m MEM]
+                 [--socket-mem SOCKET_MEM] [-d DEV_ID] [-ip CTRL_IP]
+                 [--ctrl-port CTRL_PORT] [-n NOF_MEMCHAN]
+                 [--container-name CONTAINER_NAME] [-fg]
+
+Launcher for spp-nfv applicatino container
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i SEC_ID, --sec-id SEC_ID
+                        Secondary ID
+  -l CORE_LIST, --core-list CORE_LIST
+                        Core list
+  -c CORE_MASK, --core-mask CORE_MASK
+                        Core mask
+  -m MEM, --mem MEM     Memory size for spp_nfv
+  --socket-mem SOCKET_MEM
+                        Memory size for spp_nfv
+  -d DEV_ID, --dev-id DEV_ID
+                        vhost device ID
+  -ip CTRL_IP, --ctrl-ip CTRL_IP
+                        IP address of SPP controller
+  --ctrl-port CTRL_PORT
+                        Port of SPP controller
+  -n NOF_MEMCHAN, --nof-memchan NOF_MEMCHAN
+                        Port of SPP controller
+  --container-name CONTAINER_NAME
+                        Name of container image
+  -fg, --foreground     Run container as foreground mode
+```
+
+[TODO] Add other app containers
+
 
 ### 3. Experimental tools
 
