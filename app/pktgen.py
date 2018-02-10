@@ -28,9 +28,9 @@ def parse_args():
         type=str,
         help="Memory size for spp_nfv")
     parser.add_argument(
-        '-d', '--dev-id',
-        type=int,
-        help="vhost device ID")
+        '-d', '--dev-ids',
+        type=str,
+        help="vhost device IDs")
     parser.add_argument(
         '-n', '--nof-memchan',
         type=int,
@@ -46,6 +46,10 @@ def parse_args():
         type=str,
         help="matrix of cores and port, [1:2].0 or 1.0 or so")
     parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help="Print matrix for checking and exit. Do not run pktgen-dpdk")
+    parser.add_argument(
         '--log-level',
         type=int,
         default=7,
@@ -53,41 +57,10 @@ def parse_args():
     return parser.parse_args()
 
 
-def cores_to_range(core_opt):
-    """Expand cores to ranged list.
-
-    For exp, '1-3,5' is converted to [1,2,3,5],
-    or '0x17' is to [1,2,3,5].
-    """
-
-    res = []
-    if core_opt['attr'] == '-c':
-        bin_list = list(
-            format(
-                int(core_opt['val'], 16), 'b'))
-        cnt = 1
-        bin_list.reverse()
-        for i in bin_list:
-            if i == '1':
-                res.append(cnt)
-            cnt += 1
-    elif core_opt['attr'] == '-l':
-        for core_part in core_opt['val'].split(','):
-            if '-' in core_part:
-                cl = core_part.split('-')
-                res = res + range(int(cl[0]), int(cl[1])+1)
-            else:
-                res.append(int(core_part))
-    else:
-        pass
-    res = common.uniq(res)
-    res.sort()
-    return res
-
-
 def main():
     args = parse_args()
 
+    # Check core_mask or core_list is defined.
     if args.core_mask is not None:
         core_opt = {'attr': '-c', 'val': args.core_mask}
     elif args.core_list is not None:
@@ -95,52 +68,106 @@ def main():
     else:
         common.error_exit('core_mask or core_list')
 
+    # Check memory option is defined.
     if args.socket_mem is not None:
         mem_opt = {'attr': '--socket-mem', 'val': args.socket_mem}
     else:
         mem_opt = {'attr': '-m', 'val': str(args.mem)}
 
-    if args.dev_id is None:
-        common.error_exit('--dev-id')
+    # Check for other mandatory opitons.
+    if args.dev_ids is None:
+        common.error_exit('--dev-ids')
 
-    sock_host = '/tmp/sock%d' % args.dev_id
-    sock_guest = '/var/run/usvhost%d' % args.dev_id
+    # Setup for vhost devices with given device IDs.
+    dev_ids = common.dev_ids_to_list(args.dev_ids)
+    socks = []
+    for dev_id in dev_ids:
+        socks.append({
+            'host': '/tmp/sock%d' % dev_id,
+            'guest': '/var/run/usvhost%d' % dev_id})
 
+    # Setup matrix for assignment of cores and ports.
     if args.matrix is not None:
         matrix = args.matrix
     else:
-        port_id = 0
-        core_range = cores_to_range(core_opt)
-        if len(core_range) < 2:
-            print("Error: Two or more cores required!")
+        # Get core_list such as [0,1,2] from '-c 0x07' or '-l 0-2'
+        core_list = common.cores_to_list(core_opt)
+        if len(core_list) < 2:
+            print("Error: Two or more cores required for master and slave!")
             exit()
-        elif len(core_range) == 2:
-            matrix = '%d.%d' % (core_range[1], port_id)
+
+        slave_core_list = core_list[1:]
+        nof_slave_cores = len(slave_core_list)
+        nof_ports = len(dev_ids)
+        nof_cores_each_port = nof_slave_cores / nof_ports
+        if nof_cores_each_port < 1:
+            print("Error: Too few cores for given port(s)!")
+            print("%d cores required for %d port(s)" % (
+                (nof_slave_cores + 1), nof_ports))
+            exit()
+
+        matrix_list = []
+        if nof_cores_each_port == 1:
+            for i in range(0, nof_ports):
+                matrix_list.append('%d.%d' % (slave_core_list[i], i))
+        elif nof_cores_each_port == 2:
+            for i in range(0, nof_ports):
+                matrix_list.append('[%d:%d].%d' % (
+                    slave_core_list[2*i], slave_core_list[2*i + 1], i))
+        elif nof_cores_each_port == 3:  # Give two cores for rx and one for tx.
+            for i in range(0, nof_ports):
+                matrix_list.append('[%d-%d:%d].%d' % (
+                    slave_core_list[3*i],
+                    slave_core_list[3*i + 1],
+                    slave_core_list[3*i + 2], i))
+        elif nof_cores_each_port == 4:
+            for i in range(0, nof_ports):
+                matrix_list.append('[%d-%d:%d-%d].%d' % (
+                    slave_core_list[4*i],
+                    slave_core_list[4*i + 1],
+                    slave_core_list[4*i + 2],
+                    slave_core_list[4*i + 3], i))
+        # Do not support more than five because it is rare case and
+        # calculation is complex.
         else:
-            matrix = '[%d:%d].%d' % (core_range[1], core_range[2], port_id)
+            print("Error: Too many cores for calculation for port assignment!")
+            print("Please consider to use '--matrix' for assigning directly")
+            exit()
+        matrix = ','.join(matrix_list)
 
     # pktgen theme
     theme_file = 'themes/white-black.theme'
 
+    # Setup docker command.
     docker_cmd = [
         'sudo', 'docker', 'run', '-it', '\\',
-        '--workdir', '%s/../pktgen-dpdk' % conf.RTE_SDK, '\\',
-        '-v', '%s:%s' % (sock_host, sock_guest), '\\',
+        '--workdir', '%s/../pktgen-dpdk' % conf.RTE_SDK, '\\']
+    for sock in socks:
+        docker_cmd += [
+            '-v', '%s:%s' % (sock['host'], sock['guest']), '\\']
+
+    docker_cmd += [
         '-v', '/dev/hugepages:/dev/hugepages', '\\',
-        conf.spp_container, '\\'
-    ]
+        conf.spp_container, '\\']
 
     cmd_path = '%s/../pktgen-dpdk/app/%s/pktgen' % (
         conf.RTE_SDK, conf.RTE_TARGET)
 
+    # Setup pktgen command.
     pktgen_cmd = [
         cmd_path, '\\',
         core_opt['attr'], core_opt['val'], '\\',
         '-n', str(args.nof_memchan), '\\',
         mem_opt['attr'], mem_opt['val'], '\\',
-        '--proc-type', 'auto', '\\',
-        '--vdev', 'virtio_user%d,path=%s' % (args.dev_id, sock_guest), '\\',
-        '--file-prefix', 'pktgen-container%d' % args.dev_id, '\\',
+        '--proc-type', 'auto', '\\']
+
+    for i in range(len(dev_ids)):
+        pktgen_cmd += [
+            '--vdev', 'virtio_user%d,path=%s' % (
+                dev_ids[i], socks[i]['guest']), '\\']
+
+    pktgen_cmd += [
+        '--file-prefix', 'pktgen-container%d' % dev_ids[0], '\\',
         '--log-level', str(args.log_level), '\\',
         '--', '\\',
         '-T', '\\',
@@ -152,6 +179,10 @@ def main():
     cmds = docker_cmd + pktgen_cmd
     common.print_pretty_commands(cmds)
 
+    if args.dry_run is True:
+        exit()
+
+    # Remove delimiters for print_pretty_commands().
     while '\\' in cmds:
         cmds.remove('\\')
     subprocess.call(cmds)
