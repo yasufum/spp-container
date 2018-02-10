@@ -22,15 +22,44 @@ You also need to load kernel modules and bind network ports as in
 
 ### Build Docker Image
 
-Build a docker image in which DPDK and SPP are installed with
-Dockerfile. For building image, just run `build/build.sh` to launch
-`docker build` with environment variables.
+Build a docker image in which DPDK and SPP are installed instructed as a
+Dockerfile.
+For building image, just run `build/build.sh` using latest official releases.
+This shell script launchs `docker build`.
+Waiting for a minutes and you are ready to launch containers.
 
 ```sh
 $ build/build.sh
 ```
 
-Waiting for a minutes and you are ready to launch containers.
+If you want to use specific branch of the release or repository, run `build.sh`
+with options. Please refer help for details.
+
+```sh
+$ ./build/build.py -h
+usage: build.py [-h] [-n CONTAINER_NAME] [--dpdk-repo DPDK_REPO]
+                [--dpdk-branch DPDK_BRANCH] [--pktgen-repo PKTGEN_REPO]
+                [--pktgen-branch PKTGEN_BRANCH] [--spp-repo SPP_REPO]
+                [--spp-branch SPP_BRANCH]
+
+Docker image builder for SPP
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -n CONTAINER_NAME, --container-name CONTAINER_NAME
+                        Container name
+  --dpdk-repo DPDK_REPO
+                        Git url of DPDK
+  --dpdk-branch DPDK_BRANCH
+                        Specific branch for cloning DPDK
+  --pktgen-repo PKTGEN_REPO
+                        Git url of pktgen-dpdk
+  --pktgen-branch PKTGEN_BRANCH
+                        Specific branch for cloning pktgen-dpdk
+  --spp-repo SPP_REPO   Git url of SPP
+  --spp-branch SPP_BRANCH
+                        Specific branch for cloning SPP
+```
 
 ### Launch SPP
 
@@ -190,10 +219,20 @@ optional arguments:
                         Specific branch for cloning SPP
 ```
 
-For testing purpose, `build/run.sh` launches a container without vhost
-interface and run any of commands for inspecting status
-of the container or confirm how to
-work. `run.sh` uses `env.sh` created from `build.sh` to include
+If you want to use developing version of SPP 'https://github.com/your/spp.git'
+with DPDK 17.11,
+you can build an image of DPDK 17.11 and developping repository.
+
+```sh
+./build/build.py --dpdk-branch v17.11 --spp-repo https://github.com/your/spp.git
+```
+
+Container is useful for setting up NFVs, but messy to confir details inside the
+container in some cases.
+For these cases, `build/run.sh` is useful.
+It launches a container without DPDK interface and run any of commands for
+inspecting status of the container or confirm how to work.
+`run.sh` uses `env.sh` created from `build.sh` to include
 environment variables, so do not remove it..
 
 ### 2. Application container launcher
