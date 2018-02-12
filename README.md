@@ -133,9 +133,8 @@ docker-compose. Some of scripts use docker-compose instead of
 This project supports not only SPP but also other applications
 containers such as testpmd or pktgen-dpdk.
 It consists of python, shell scripts and configuration files.
-Files are categorized in three types of tools considering phases,
-build tool for creating container image,
-application launchers running inside containers and
+Build tool is for creating container image,
+application launchers are for running inside containers and
 experimental tools.
 
 ```sh
@@ -143,21 +142,27 @@ $ tree spp-container/
 spp-container/
 ├── README.md
 ├── app
-│   ├── spp-primary.py
-│   ├── spp-nfv.py
-│   ├── spp-vm.py
+│   ├── __init__.py
+│   ├── common.py
+│   ├── conf.py
 │   ├── l2fwd.py
+│   ├── pktgen-sec.py
 │   ├── pktgen.py
+│   ├── spp-nfv.py
+│   ├── spp-primary.py
+│   ├── spp-vm.py
 │   └── testpmd.py
 ├── build
 │   ├── Dockerfile
 │   ├── run.sh
 │   └── build.sh
-├── env.sh
+├── compose
+│   ├── docker-compose.yml
+│   └── pktgen-compose.sh
 └── experimental
     └── host
-        ├── l2fwd-host.sh
-        ├── pktgen-host.sh
+        ├── l2fwd-host.sh
+        ├── pktgen-host.sh
         └── testpmd-host.sh
 ```
 
@@ -168,6 +173,14 @@ As explained in `Overview` section, build process is done by simply
 typing `build/build.py`.
 This script is for running `docker build` with a set of `--build-args`
 options for applying inside container.
+
+If you want to use developing version of SPP 'https://github.com/your/spp.git'
+with DPDK 17.11,
+you can build an image of DPDK 17.11 and developping repository.
+
+```sh
+./build/build.py --dpdk-branch v17.11 --spp-repo https://github.com/your/spp.git
+```
 
 Refer all of options running with `-h` option.
 
@@ -197,14 +210,6 @@ optional arguments:
                         Specific branch for cloning SPP
 ```
 
-If you want to use developing version of SPP 'https://github.com/your/spp.git'
-with DPDK 17.11,
-you can build an image of DPDK 17.11 and developping repository.
-
-```sh
-./build/build.py --dpdk-branch v17.11 --spp-repo https://github.com/your/spp.git
-```
-
 Container is useful for setting up NFVs, but just bit messy to lookup inside the
 container because it is cleaned up immediately after process is finished.
 To inspect inside the container, `build/run.sh` is useful.
@@ -220,11 +225,15 @@ Application container launchers are placed in `app/`.
 
 ```sh
 app
-├── spp-primary.py
-├── spp-nfv.py
-├── spp-vm.py
+├── __init__.py
+├── common.py
+├── conf.py
 ├── l2fwd.py
+├── pktgen-sec.py
 ├── pktgen.py
+├── spp-nfv.py
+├── spp-primary.py
+├── spp-vm.py
 └── testpmd.py
 ```
 
