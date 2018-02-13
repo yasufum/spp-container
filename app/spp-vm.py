@@ -51,6 +51,10 @@ def parse_args():
         default=4,
         help="Port of SPP controller")
     parser.add_argument(
+        '-p', '--port-mask',
+        type=str,
+        help="Port mask")
+    parser.add_argument(
         '--container-name',
         type=str,
         default='spp-container',
@@ -89,6 +93,9 @@ def main():
 
     if args.dev_ids is None:
         common.error_exit('--dev-ids')
+
+    if args.port_mask is None:
+        common.error_exit('--port-mask')
 
     # This container is running in backgroud in defualt.
     if args.foreground is not True:
@@ -144,6 +151,7 @@ def main():
 
     spp_opts = [
         '-n', str(args.sec_id), '\\',
+        '-p', args.port_mask, '\\',
         '-s', '%s:%d' % (ctrl_ip, args.ctrl_port)
     ]
 
