@@ -3,9 +3,17 @@
 CMD=$1
 APP_DIR=`dirname ${0}`
 CONTAINER_NAME=spp-container
+ENVSH=${APP_DIR}/env.sh
 
 # Include env.sh
-. ${APP_DIR}/env.sh
+if [ -e ${ENVSH} ];then
+  . ${ENVSH}
+else
+  _build_env='./build/build.py --only-envsh'
+  echo "[Error] ${ENVSH} does not exist!"
+  echo "You have to build image or run '${_build_env}' to create it."
+  exit
+fi
 
 if [ ! $1 ]; then
   echo "usage: $0 [command]"
