@@ -26,15 +26,15 @@ You also need to load kernel modules and bind network ports as in
 
 Build a docker image in which DPDK and SPP are installed instructed as a
 Dockerfile.
-For building image, just run `build/build.sh` using latest releases.
+For building image, just run `build/build.py` using latest releases.
 This shell script launchs `docker build`.
 Waiting for a minutes and you are ready to launch containers.
 
 ```sh
-$ build/build.sh
+$ build/build.py
 ```
 
-If you want to use specific branch of the release or repository, run `build.sh`
+If you want to use specific branch of the release or repository, run `build.py`
 with options. Please refer help `build/build.py -h` for details.
 
 
@@ -155,7 +155,7 @@ spp-container/
 ├── build
 │   ├── Dockerfile
 │   ├── run.sh
-│   └── build.sh
+│   └── build.py
 ├── compose
 │   ├── docker-compose.yml
 │   └── pktgen-compose.sh
@@ -215,7 +215,7 @@ container because it is cleaned up immediately after process is finished.
 To inspect inside the container, `build/run.sh` is useful.
 It launches the container and run any of command without DPDK interfaces
 for just inspecting the container.
-`build/run.sh` uses `env.sh` created from `build/build.sh` to include
+`build/run.sh` uses `env.sh` created from `build/build.py` to include
 environment variables, so do not remove it.
 
 
@@ -287,7 +287,12 @@ It is another example with one core and two ports in background mode.
 $ ./app/spp-primary -l 0 -p 0x03
 ```
 
-You can use other options than explained. Please refer help.
+If you need to inspect a docker command before launching a container,
+`--dry-run` option is useful.
+It composes a docker command and just display it without running the
+docker command actually.
+
+You can use other options than explained. Please refer help for details.
 
 ```sh
 $ ./app/spp-primary.py -h
@@ -295,7 +300,7 @@ usage: spp-primary.py [-h] [-n NOF_RING] [-p PORT_MASK] [-l CORE_LIST]
                       [-c CORE_MASK] [-m MEM] [--socket-mem SOCKET_MEM]
                       [-ip CTRL_IP] [--ctrl-port CTRL_PORT]
                       [--nof-memchan NOF_MEMCHAN]
-                      [--container-name CONTAINER_NAME] [-fg]
+                      [--container-name CONTAINER_NAME] [-fg] [--dry-run]
 
 Launcher for spp-nfv applicatino container
 
@@ -321,6 +326,8 @@ optional arguments:
   --container-name CONTAINER_NAME
                         Name of container image
   -fg, --foreground     Run container as foreground mode
+  --dry-run             Print matrix for checking and exit. Do not run spp-
+                        primary
 ```
 
 
@@ -337,17 +344,18 @@ or `spp-vm.py` for vhost interface.
 core list.
 
 ```sh
-$ app/spp-nfv.py -i 1 -l 2-3
+$ ./app/spp-nfv.py -i 1 -l 2-3
 ```
 
 You can specify other options as DPDK applications.
+Refer help for details.
 
 ```sh
 $ ./app/spp-nfv.py -h
 usage: spp-nfv.py [-h] [-i SEC_ID] [-l CORE_LIST] [-c CORE_MASK] [-m MEM]
                   [--socket-mem SOCKET_MEM] [-ip CTRL_IP]
                   [--ctrl-port CTRL_PORT] [--nof-memchan NOF_MEMCHAN]
-                  [--container-name CONTAINER_NAME] [-fg]
+                  [--container-name CONTAINER_NAME] [-fg] [--dry-run]
 
 Launcher for spp-nfv applicatino container
 
@@ -371,6 +379,7 @@ optional arguments:
   --container-name CONTAINER_NAME
                         Name of container image
   -fg, --foreground     Run container as foreground mode
+  --dry-run             Print matrix for checking and exit. Do not run spp_nfv
 ```
 
 For launching `spp_vm` for vhost interface, it is required to assign
@@ -385,7 +394,7 @@ spp > sec 1;add vhost 1
 Launch a secondary container with device ID 1.
 
 ```sh
-$ app/spp-vm.py -i 2 -l 4-5 -d 1
+$ ./app/spp-vm.py -i 2 -l 4-5 -d 1
 ```
 
 You can specify other options as DPDK applications.
@@ -395,7 +404,7 @@ $ ./app/spp-vm.py -h
 usage: spp-vm.py [-h] [-i SEC_ID] [-l CORE_LIST] [-c CORE_MASK] [-m MEM]
                  [--socket-mem SOCKET_MEM] [-d DEV_ID] [-ip CTRL_IP]
                  [--ctrl-port CTRL_PORT] [-n NOF_MEMCHAN]
-                 [--container-name CONTAINER_NAME] [-fg]
+                 [--container-name CONTAINER_NAME] [-fg] [--dry-run]
 
 Launcher for spp-nfv applicatino container
 
@@ -421,9 +430,195 @@ optional arguments:
   --container-name CONTAINER_NAME
                         Name of container image
   -fg, --foreground     Run container as foreground mode
+  --dry-run             Print matrix for checking and exit. Do not run spp_vm
 ```
 
-[TODO] Add other app containers
+
+#### Pktgen-dpdk Container
+
+`pktgen.py` is a launcher script for `pktgen-dpdk`.
+It launches `pktgen-dpdk` inside a container with specified
+vhost interfaces.
+
+This is an example for launching with five cores (6-10th cores)
+and two vhost interfaces.
+It launches `pktgen-dpdk` from `docker run` in interactive mode.
+
+```sh
+$ ./app/pktgen.py -l 6-10 -d 1,2
+sudo docker run -it \
+ --workdir /root/dpdk/../pktgen-dpdk \
+ -v /tmp/sock1:/var/run/usvhost1 \
+ ...
+ spp-container \
+ /root/dpdk/../pktgen-dpdk/app/x86_64-native-linuxapp-gcc/pktgen \
+ -l 6-10 \
+ -n 4 \
+ -m 1024 \
+ --proc-type auto \
+ --vdev virtio_user1,path=/var/run/usvhost1 \
+ ...
+ -m [7:8].0,[9:10].1 \
+ ...
+...
+```
+
+You might notice that given cores are assigned to two ports
+as `-m [7:8].0,[9:10].1` appropriately.
+In this case, `pktgen.py` assign first core to master lcore and
+remaining cores to slave lcores for packet processing equally.
+If the number of given cores is larger than required number,
+remained cores are simply not used.
+
+Calculation of core assignment of `pktgen.py` currently supports
+up to four cores for each of ports because a usecase more than four
+cores is rare and calculation is to be complicated.
+
+```sh
+# Assign five cores for a slave is failed to launch
+$ ./app/pktgen.py -l 6-11 -d 1
+Error: Too many cores for calculation for port assignment!
+Please consider to use '--matrix' for assigning directly
+```
+
+This are other examples for core assignments of `pktgen.py`.
+
+##### (1) Three cores for two ports
+
+Assign one core to master lcore and two cores two slaves for two ports.
+
+```sh
+$ ./app/pktgen.py -l 6-8 -d 1,2
+ ...
+ -m 7.0,8.1 \
+```
+
+##### (2) Seven cores for three ports
+
+Assign one core for master lcore and each of two cores to
+three slaves for three ports.
+
+```sh
+$ ./app/pktgen.py -l 6-12 -d 1,2,3
+ ...
+ -m [7:8].0,[9:10].1,[11:12].2 \
+```
+
+##### (3) Seven cores for two ports
+
+Assign one core for master lcore and each of three cores to
+two slaves for two ports.
+In this case, each of three cores cannot be assigned rx and tx port
+equally, so given two cores to rx and one core to tx.
+
+```sh
+$ ./app/pktgen.py -l 6-12 -d 1,2
+ ...
+ -m [7-8:9].0,[10-11:12].1 \
+```
+
+#### Testpmd Container
+
+`testpmd.py` is a launcher script for DPDK's `testpmd`.
+It launches `testpmd` inside a container with specified
+vhost interfaces.
+
+This is an example for launching with three cores (6-8th cores)
+and two vhost interfaces.
+It launches `testpmd` from `docker run` in interactive mode.
+
+```sh
+$ ./app/testpmd.py -l 6-8 -d 1,2
+sudo docker run -it \
+ -v /tmp/sock1:/var/run/usvhost1 \
+ ...
+ spp-container \
+ testpmd \
+ -l 6-8 \
+ ...
+ Checking link statuses...
+ Done
+ testpmd>
+```
+
+Refer help for details.
+
+```sh
+$ ./app/testpmd.py -h
+usage: testpmd.py [-h] [-l CORE_LIST] [-c CORE_MASK] [-m MEM]
+                  [--socket-mem SOCKET_MEM] [-d DEV_IDS] [-n NOF_MEMCHAN]
+                  [--container-name CONTAINER_NAME] [--pci] [--enable-hw-vlan]
+                  [--dry-run]
+
+Launcher for spp-nfv applicatino container
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -l CORE_LIST, --core-list CORE_LIST
+                        Core list
+  -c CORE_MASK, --core-mask CORE_MASK
+                        Core mask
+  -m MEM, --mem MEM     Memory size for spp_nfv, exp: -m 1024
+  --socket-mem SOCKET_MEM
+                        Memory size for spp_nfv, exp: --socket-mem 512,512
+  -d DEV_IDS, --dev-ids DEV_IDS
+                        vhost device IDs
+  -n NOF_MEMCHAN, --nof-memchan NOF_MEMCHAN
+                        Port of SPP controller
+  --container-name CONTAINER_NAME
+                        Name of container image
+  --pci                 Enable PCI (default is None)
+  --enable-hw-vlan      Enable hardware vlan (default is None)
+  --dry-run             Print matrix for checking and exit. Do not run testpmd
+```
+
+#### L2fwd Container
+
+`l2fwd.py` is a launcher script for DPDK's `l2fwd` sample application.
+It launches `testpmd` inside a container with specified
+vhost interfaces.
+
+This is an example for launching with two cores (6-7th cores)
+and two vhost interfaces.
+'l2fwd' requires an even number of ports and it must be specified
+with `--port-mask` or `-p` option.
+
+```sh
+$ ./app/l2fwd.py -l 6-7 -d 1,2 -p 0x03 -fg
+...
+```
+
+Refer help for details.
+
+```sh
+$ ./app/l2fwd.py -h
+usage: l2fwd.py [-h] [-l CORE_LIST] [-c CORE_MASK] [-m MEM]
+                [--socket-mem SOCKET_MEM] [-d DEV_IDS] [-n NOF_MEMCHAN]
+                [-p PORT_MASK] [--container-name CONTAINER_NAME] [-fg]
+                [--dry-run]
+
+Launcher for l2fwd application container
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -l CORE_LIST, --core-list CORE_LIST
+                        Core list
+  -c CORE_MASK, --core-mask CORE_MASK
+                        Core mask
+  -m MEM, --mem MEM     Memory size
+  --socket-mem SOCKET_MEM
+                        Memory size for NUMA nodes
+  -d DEV_IDS, --dev-ids DEV_IDS
+                        two or more even vhost device IDs
+  -n NOF_MEMCHAN, --nof-memchan NOF_MEMCHAN
+                        Number of memory channels
+  -p PORT_MASK, --port-mask PORT_MASK
+                        Port mask
+  --container-name CONTAINER_NAME
+                        Name of container image
+  -fg, --foreground     Run container as foreground mode
+  --dry-run             Print matrix for checking and exit. Do not run l2fwd
+```
 
 
 ### 3. Experimental tools
@@ -442,7 +637,6 @@ It is configured to provide two vhost interfaces and portmask is
 Physical ports are excluded with `-b` option (blacklist) of DPDK.
 
 Please edit it for chaning configuration to adjust to your environment.
-
 
 
 ## How to run docker without sudo
