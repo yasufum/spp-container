@@ -10,7 +10,7 @@ import subprocess
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Launcher for spp-nfv applicatino container")
+        description="Launcher for spp-nfv application container")
     parser.add_argument(
         '-i', '--sec-id',
         type=int,
@@ -45,7 +45,7 @@ def parse_args():
         '--nof-memchan',
         type=int,
         default=4,
-        help="Port of SPP controller")
+        help="Number of memory channels")
     parser.add_argument(
         '--container-name',
         type=str,
