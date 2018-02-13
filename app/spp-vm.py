@@ -33,9 +33,9 @@ def parse_args():
         type=str,
         help="Memory size for spp_nfv")
     parser.add_argument(
-        '-d', '--dev-id',
-        type=int,
-        help='vhost device ID')
+        '-d', '--dev-ids',
+        type=str,
+        help='vhost device IDs')
     parser.add_argument(
         '-ip', '--ctrl-ip',
         type=str,
@@ -87,8 +87,8 @@ def main():
     if args.sec_id is None:
         common.error_exit('--sec-id')
 
-    if args.dev_id is None:
-        common.error_exit('--dev-id')
+    if args.dev_ids is None:
+        common.error_exit('--dev-ids')
 
     # This container is running in backgroud in defualt.
     if args.foreground is not True:
@@ -102,12 +102,20 @@ def main():
         common.error_exit('SPP_CTRL_IP')
 
     # Setup docker command.
-    sock_host = '/tmp/sock%d' % args.dev_id
-    sock_guest = '/var/run/usvhost%d' % args.dev_id
+    docker_cmd = ['sudo', 'docker', 'run', docker_run_opt, '\\']
 
-    docker_cmd = [
-        'sudo', 'docker', 'run', docker_run_opt, '\\',
-        '-v', '%s:%s' % (sock_host, sock_guest), '\\',
+    # Setup for vhost devices with given device IDs.
+    dev_ids = common.dev_ids_to_list(args.dev_ids)
+    socks = []
+    for dev_id in dev_ids:
+        socks.append({
+            'host': '/tmp/sock%d' % dev_id,
+            'guest': '/var/run/usvhost%d' % dev_id})
+    for sock in socks:
+        docker_cmd += [
+            '-v', '%s:%s' % (sock['host'], sock['guest']), '\\']
+
+    docker_cmd += [
         '-v', '/dev/hugepages:/dev/hugepages', '\\',
         '-v', '/var/run/:/var/run/', '\\',
         conf.spp_container, '\\'
@@ -123,9 +131,15 @@ def main():
         core_opt['attr'], core_opt['val'], '\\',
         '-n', str(args.nof_memchan), '\\',
         mem_opt['attr'], mem_opt['val'], '\\',
-        '--proc-type', 'primary', '\\',
-        '--vdev', 'virtio_user%d,path=%s' % (args.dev_id, sock_guest), '\\',
-        '--file-prefix', 'spp-vm%d' % args.dev_id, '\\',
+        '--proc-type', 'primary', '\\']
+
+    for i in range(len(dev_ids)):
+        eal_opts += [
+            '--vdev', 'virtio_user%d,path=%s' % (
+                dev_ids[i], socks[i]['guest']), '\\']
+
+    eal_opts += [
+        '--file-prefix', 'spp-vm%d' % dev_ids[0], '\\',
         '--', '\\']
 
     spp_opts = [
