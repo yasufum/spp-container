@@ -9,7 +9,7 @@ import subprocess
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Launcher for spp-nfv applicatino container")
+        description="Launcher for pktgen-dpdk application container")
     parser.add_argument(
         '-l', '--core-list',
         type=str,
@@ -22,11 +22,11 @@ def parse_args():
         '-m', '--mem',
         type=int,
         default=1024,
-        help="Memory size for spp_nfv")
+        help="Memory size for application")
     parser.add_argument(
         '--socket-mem',
         type=str,
-        help="Memory size for spp_nfv")
+        help="Memory size for application")
     parser.add_argument(
         '-d', '--dev-ids',
         type=str,
@@ -35,7 +35,7 @@ def parse_args():
         '-n', '--nof-memchan',
         type=int,
         default=4,
-        help="Port of SPP controller")
+        help="Number of memory channels")
     parser.add_argument(
         '--container-name',
         type=str,
@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument(
         '--matrix',
         type=str,
-        help="matrix of cores and port, [1:2].0 or 1.0 or so")
+        help="Matrix of cores and port, [1:2].0 or 1.0 or so")
     parser.add_argument(
         '--dry-run',
         action='store_true',
