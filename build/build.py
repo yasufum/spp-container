@@ -46,10 +46,19 @@ def parse_args():
         '--spp-branch',
         type=str,
         help="Specific branch for cloning SPP")
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help="Print matrix for checking and exit. Do not run docker build")
     return parser.parse_args()
 
 
 def create_env_sh(work_dir):
+    """Create config file for DPDK environment variables
+
+    Create 'env.sh' which defines $RTE_SDK and $RTE_TARGET inside a
+    container to be referredd from 'run.sh' and Dockerfile.
+    """
     contents = "export RTE_SDK=%s\n" % conf.RTE_SDK
     contents += "export RTE_TARGET=%s" % conf.RTE_TARGET
 
@@ -61,11 +70,13 @@ def create_env_sh(work_dir):
 def main():
     args = parse_args()
 
+    # Check if container's name is given.
     if args.container_name is not None:
         container_name = args.container_name
     else:
         container_name = conf.spp_container
 
+    # Setup branches if user specifies.
     if args.dpdk_branch is not None:
         dpdk_branch = "-b %s" % args.dpdk_branch
     else:
@@ -81,19 +92,21 @@ def main():
     else:
         spp_branch = ''
 
+    # Setup environment variables on host to pass 'docker build'.
     env_opts = [
         'http_proxy',
         'https_proxy',
         'no_proxy'
     ]
 
-    cmds = ['sudo', 'docker', 'build', '\\']
+    docker_cmd = ['sudo', 'docker', 'build', '\\']
 
     for opt in env_opts:
         if opt in os.environ.keys():
-            cmds += ['--build-arg', '%s=%s' % (opt, os.environ[opt]), '\\']
+            docker_cmd += [
+                '--build-arg', '%s=%s' % (opt, os.environ[opt]), '\\']
 
-    cmds += [
+    docker_cmd += [
         '--build-arg', 'home_dir=%s' % conf.HOMEDIR, '\\',
         '--build-arg', 'rte_sdk=%s' % conf.RTE_SDK, '\\',
         '--build-arg', 'rte_target=%s' % conf.RTE_TARGET, '\\',
@@ -106,13 +119,17 @@ def main():
         '-t', container_name, work_dir
     ]
 
-    common.print_pretty_commands(cmds)
+    common.print_pretty_commands(docker_cmd)
+
+    if args.dry_run is True:
+        exit()
+
     create_env_sh(work_dir)
 
     # Remove delimiters for print_pretty_commands().
-    while '\\' in cmds:
-        cmds.remove('\\')
-    subprocess.call(cmds)
+    while '\\' in docker_cmd:
+        docker_cmd.remove('\\')
+    subprocess.call(docker_cmd)
 
 
 if __name__ == '__main__':
