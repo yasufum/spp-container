@@ -59,12 +59,17 @@ def parse_args():
         '-fg', '--foreground',
         action='store_true',
         help="Run container as foreground mode")
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help="Print matrix for checking and exit. Do not run spp_vm")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
 
+    # Check core_mask or core_list is defined.
     if args.core_mask is not None:
         core_opt = {'attr': '-c', 'val': args.core_mask}
     elif args.core_list is not None:
@@ -72,26 +77,31 @@ def main():
     else:
         common.error_exit('--core-mask or --core-list')
 
+    # Check memory option is defined.
     if args.socket_mem is not None:
         mem_opt = {'attr': '--socket-mem', 'val': args.socket_mem}
     else:
         mem_opt = {'attr': '-m', 'val': str(args.mem)}
 
+    # Check for other mandatory opitons.
+    if args.sec_id is None:
+        common.error_exit('--sec-id')
+
     if args.dev_id is None:
         common.error_exit('--dev-id')
 
+    # This container is running in backgroud in defualt.
     if args.foreground is not True:
         docker_run_opt = '-d'
     else:
         docker_run_opt = '-it'
 
+    # IP address of SPP controller.
     ctrl_ip = os.getenv('SPP_CTRL_IP', args.ctrl_ip)
     if ctrl_ip is None:
         common.error_exit('SPP_CTRL_IP')
 
-    if args.sec_id is None:
-        common.error_exit('--sec-id')
-
+    # Setup docker command.
     sock_host = '/tmp/sock%d' % args.dev_id
     sock_guest = '/var/run/usvhost%d' % args.dev_id
 
@@ -103,25 +113,33 @@ def main():
         conf.spp_container, '\\'
     ]
 
+    # Setup spp_vm command.
     cmd_path = '%s/../spp/src/vm/%s/spp_vm' % (
         conf.RTE_SDK, conf.RTE_TARGET)
 
-    spp_cmd = [
-        cmd_path, '\\',
+    spp_cmd = [cmd_path, '\\']
+
+    eal_opts = [
         core_opt['attr'], core_opt['val'], '\\',
         '-n', str(args.nof_memchan), '\\',
         mem_opt['attr'], mem_opt['val'], '\\',
         '--proc-type', 'primary', '\\',
         '--vdev', 'virtio_user%d,path=%s' % (args.dev_id, sock_guest), '\\',
         '--file-prefix', 'spp-vm%d' % args.dev_id, '\\',
-        '--', '\\',
+        '--', '\\']
+
+    spp_opts = [
         '-n', str(args.sec_id), '\\',
         '-s', '%s:%d' % (ctrl_ip, args.ctrl_port)
     ]
 
-    cmds = docker_cmd + spp_cmd
+    cmds = docker_cmd + spp_cmd + eal_opts + spp_opts
     common.print_pretty_commands(cmds)
 
+    if args.dry_run is True:
+        exit()
+
+    # Remove delimiters for print_pretty_commands().
     while '\\' in cmds:
         cmds.remove('\\')
     subprocess.call(cmds)
