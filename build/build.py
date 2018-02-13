@@ -47,9 +47,13 @@ def parse_args():
         type=str,
         help="Specific branch for cloning SPP")
     parser.add_argument(
+        '--only-envsh',
+        action='store_true',
+        help="Create env.sh and exit without docker build")
+    parser.add_argument(
         '--dry-run',
         action='store_true',
-        help="Print matrix for checking and exit. Do not run docker build")
+        help="Print matrix for checking and exit without docker build")
     return parser.parse_args()
 
 
@@ -92,6 +96,19 @@ def main():
     else:
         spp_branch = ''
 
+    # Check for just creating env.sh, or run docker build.
+    if args.only_envsh is True:
+        if args.dry_run is False:
+            create_env_sh(work_dir)
+            print("Info: '%s/env.sh' created." % work_dir)
+            exit()
+        else:
+            print("Info: Nothin done because you gave %s with %s." % (
+                '--only-envsh', '--dry-run'))
+            exit()
+    else:
+        create_env_sh(work_dir)
+
     # Setup environment variables on host to pass 'docker build'.
     env_opts = [
         'http_proxy',
@@ -123,8 +140,6 @@ def main():
 
     if args.dry_run is True:
         exit()
-
-    create_env_sh(work_dir)
 
     # Remove delimiters for print_pretty_commands().
     while '\\' in docker_cmd:
