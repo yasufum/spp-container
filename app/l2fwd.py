@@ -49,6 +49,10 @@ def parse_args():
         '-fg', '--foreground',
         action='store_true',
         help="Run container as foreground mode")
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help="Print matrix for checking and exit. Do not run l2fwd")
     return parser.parse_args()
 
 
@@ -140,6 +144,9 @@ def main():
 
     cmds = docker_cmd + l2fwd_cmd
     common.print_pretty_commands(cmds)
+
+    if args.dry_run is True:
+        exit()
 
     # Remove delimiters for print_pretty_commands().
     while '\\' in cmds:
