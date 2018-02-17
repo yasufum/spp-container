@@ -38,6 +38,14 @@ def parse_args():
         type=str,
         help="Memory size for application")
     parser.add_argument(
+        '-dv', '--dev-vhost-ids',
+        type=str,
+        help='vhost device IDs')
+    parser.add_argument(
+        '-dt', '--dev-tap-ids',
+        type=str,
+        help='TAP device IDs')
+    parser.add_argument(
         '-ip', '--ctrl-ip',
         type=str,
         help="IP address of SPP controller")
@@ -104,9 +112,29 @@ def main():
         'sudo', 'docker', 'run', docker_run_opt, '\\',
         '--privileged', '\\',
         '-v', '/dev/hugepages:/dev/hugepages', '\\',
-        '-v', '/var/run/:/var/run/', '\\',
-        conf.spp_container, '\\'
-    ]
+        '-v', '/var/run/:/var/run/', '\\']
+    if args.dev_vhost_ids is not None:
+        docker_cmd += ['-v', '/tmp:/tmp', '\\']
+
+    # Setup for TAP devices with given device IDs.
+    if args.dev_tap_ids is not None:
+        dev_tap_ids = common.dev_ids_to_list(args.dev_tap_ids)
+    else:
+        dev_tap_ids = []
+
+    # Setup for vhost devices with given device IDs.
+    if args.dev_vhost_ids is not None:
+        dev_vhost_ids = common.dev_ids_to_list(args.dev_vhost_ids)
+        socks = []
+        for dev_id in dev_vhost_ids:
+            socks.append({
+                'host': '/tmp/sock%d' % dev_id,
+                'guest': '/tmp/sock%d' % dev_id})
+    else:
+        dev_vhost_ids = []
+
+    docker_cmd += [
+        conf.spp_container, '\\']
 
     # Setup spp primary command.
     cmd_path = '%s/../spp/src/primary/%s/spp_primary' % (
@@ -119,8 +147,21 @@ def main():
         '-n', str(args.nof_memchan), '\\',
         mem_opt['attr'], mem_opt['val'], '\\',
         '--huge-dir', '/dev/hugepages', '\\',
-        '--proc-type', 'primary', '\\',
-        '--', '\\']
+        '--proc-type', 'primary', '\\']
+
+    # Add TAP vdevs
+    for i in range(len(dev_tap_ids)):
+        eal_opts += [
+            '--vdev', 'net_tap%d,iface=foo%d' % (
+                dev_tap_ids[i], dev_tap_ids[i]), '\\']
+
+    # Add vhost vdevs
+    for i in range(len(dev_vhost_ids)):
+        eal_opts += [
+            '--vdev', 'eth_vhost%d,iface=%s' % (
+                dev_vhost_ids[i], socks[i]['guest']), '\\']
+
+    eal_opts += ['--', '\\']
 
     spp_opts = [
         '-p', args.port_mask, '\\',
