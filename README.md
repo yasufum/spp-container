@@ -117,7 +117,34 @@ $ app/spp-vm.py -i 2 -l 4-5 -d 1
 * DPDK 17.11 or later (supporting container)
 * SPP 17.11 or later
 
-### Optional
+### Proxy Configuration
+
+You have to configure proxy for building an image and running
+containers.
+Although this tool is supportng proxy configuration by getting
+it from shell environments, you need to add a configurations
+for docker daemon.
+First of all, confirm that `http_proxy`, `https_proxy` and `no_proxy`
+of environmental variables are defined.
+
+Proxy for docker daemon is defined as `[Service]` entry in
+`/etc/systemd/system/docker.service.d/http-proxy.conf`.
+
+```sh
+[Service]
+Environment="HTTP_PROXY=http://your-http-proxy:port/" "HTTPS_PROXY=https://your-https-proxy:port/" "NO_PROXY=localhost,127.0.0.1,your-no-proxy"
+```
+
+To activate it, restart the daemon.
+
+```sh
+$ systemctl daemon-reload
+$ systemctl restart docker
+```
+
+You can confirm that environments are updated by running `docker info`.
+
+### Docker Compose
 
 It is under consideration to launch serveral containers with
 docker-compose. Some of scripts use docker-compose instead of
