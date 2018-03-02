@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y \
     libpcap-dev \
     wget \
     tmux \
+    pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
