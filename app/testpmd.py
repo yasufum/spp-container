@@ -124,8 +124,6 @@ def main():
     testpmd_opts = []
     if args.enable_hw_vlan is True:
         testpmd_opts += ['--elable-hw-vlan', '\\']
-    else:
-        testpmd_opts += ['--disable-hw-vlan', '\\']
 
     testpmd_opts += [
         '-i'
