@@ -2,10 +2,16 @@
 # coding: utf-8
 
 import argparse
-import common
-import conf
 import os
 import subprocess
+import sys
+
+work_dir = os.path.dirname(__file__)
+sys.path.append(work_dir + '/..')
+from conf import env
+from lib import common
+
+container_name = 'spp'
 
 
 def parse_args():
@@ -101,12 +107,12 @@ def main():
         '-v', '/dev/hugepages:/dev/hugepages', '\\',
         '-v', '/var/run/:/var/run/', '\\',
         '-v', '/tmp/:/tmp/', '\\',
-        conf.spp_container, '\\'
+        env.CONTAINER_NAME[container_name], '\\'
     ]
 
     # Setup spp_nfv command.
     cmd_path = '%s/../spp/src/nfv/%s/spp_nfv' % (
-        conf.RTE_SDK, conf.RTE_TARGET)
+        env.RTE_SDK, env.RTE_TARGET)
 
     spp_cmd = [cmd_path, '\\']
 
