@@ -2,9 +2,16 @@
 # coding: utf-8
 
 import argparse
-import common
-import conf
+import os
 import subprocess
+import sys
+
+work_dir = os.path.dirname(__file__)
+sys.path.append(work_dir + '/..')
+from conf import env
+from lib import common
+
+container_name = 'dpdk'
 
 
 def parse_args():
@@ -95,7 +102,7 @@ def main():
 
     docker_cmd += [
         '-v', '/dev/hugepages:/dev/hugepages', '\\',
-        conf.spp_container, '\\'
+        env.CONTAINER_NAME[container_name], '\\'
     ]
 
     cmd_path = 'testpmd'
