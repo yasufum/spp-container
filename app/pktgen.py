@@ -2,9 +2,16 @@
 # coding: utf-8
 
 import argparse
-import common
-import conf
+import os
 import subprocess
+import sys
+
+work_dir = os.path.dirname(__file__)
+sys.path.append(work_dir + '/..')
+from conf import env
+from lib import common
+
+container_name = 'pktgen'
 
 
 def parse_args():
@@ -141,17 +148,17 @@ def main():
     # Setup docker command.
     docker_cmd = [
         'sudo', 'docker', 'run', '-it', '\\',
-        '--workdir', '%s/../pktgen-dpdk' % conf.RTE_SDK, '\\']
+        '--workdir', '%s/../pktgen-dpdk' % env.RTE_SDK, '\\']
     for sock in socks:
         docker_cmd += [
             '-v', '%s:%s' % (sock['host'], sock['guest']), '\\']
 
     docker_cmd += [
         '-v', '/dev/hugepages:/dev/hugepages', '\\',
-        conf.spp_container, '\\']
+        env.CONTAINER_NAME[container_name], '\\']
 
     cmd_path = '%s/../pktgen-dpdk/app/%s/pktgen' % (
-        conf.RTE_SDK, conf.RTE_TARGET)
+        env.RTE_SDK, env.RTE_TARGET)
 
     # Setup pktgen command.
     pktgen_cmd = [
