@@ -2,10 +2,16 @@
 # coding: utf-8
 
 import argparse
-import common
-import conf
 import os
 import subprocess
+import sys
+
+work_dir = os.path.dirname(__file__)
+sys.path.append(work_dir + '/..')
+from conf import env
+from lib import common
+
+container_name = 'spp'
 
 
 def parse_args():
@@ -125,12 +131,12 @@ def main():
     docker_cmd += [
         '-v', '/dev/hugepages:/dev/hugepages', '\\',
         '-v', '/var/run/:/var/run/', '\\',
-        conf.spp_container, '\\'
+        env.CONTAINER_NAME[container_name], '\\'
     ]
 
     # Setup spp_vm command.
     cmd_path = '%s/../spp/src/vm/%s/spp_vm' % (
-        conf.RTE_SDK, conf.RTE_TARGET)
+        env.RTE_SDK, env.RTE_TARGET)
 
     spp_cmd = [cmd_path, '\\']
 
