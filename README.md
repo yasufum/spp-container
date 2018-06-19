@@ -2,6 +2,7 @@
 
 Running SPP and DPDK applications on containers.
 
+This tools is under reviewing to be merged to http://dpdk.org/git/apps/spp.
 
 ## Overview
 
@@ -24,8 +25,8 @@ You also need to load kernel modules and bind network ports as in
 
 ### Build Docker Image
 
-Build a docker image in which DPDK and SPP are installed instructed as a
-Dockerfile.
+Build a docker image in which DPDK is installed.
+
 For building image, just run `build/build.py` using latest releases.
 This shell script launchs `docker build`.
 Waiting for a minutes and you are ready to launch containers.
