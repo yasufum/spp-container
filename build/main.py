@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument(
         '-t', '--target',
         type=str,
-        help="Build target (dpdk, pktgen or spp)")
+        help="Build target (dpdk, pktgen, spp or all)")
     parser.add_argument(
         '-n', '--container-name',
         type=str,
@@ -83,8 +83,9 @@ def main():
         target_dir = '%s/%s' % (work_dir, args.target)
         container_name = env.CONTAINER_NAME[args.target]
     else:
-        target_dir = work_dir
-        container_name = env.CONTAINER_NAME['default']
+        print("Error: Target '-t [dpdk|pktgen|spp|all]' is required!")
+        exit()
+
 
     # Overwrite container's name if it is given.
     if args.container_name is not None:
